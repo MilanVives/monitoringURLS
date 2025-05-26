@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  monitor:
+    build: .
+    container_name: url-monitor
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./Node.csv:/usr/src/app/Node.csv
+      - ./public:/usr/src/app/public
+      - ./img:/usr/src/app/img
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - CHECK_INTERVAL=300000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/urls"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
