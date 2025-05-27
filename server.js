@@ -33,6 +33,16 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+app.post('/api/reload-csv', async (req, res) => {
+  try {
+    urlData = await processCSV();
+    await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
+    res.json({ success: true, message: 'CSV reloaded' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 async function initialize() {
   try {
     urlData = await processCSV();

@@ -117,6 +117,7 @@
     <span id="total-count">0</span> Total
   </div>
   <button class="refresh-btn" onclick="refreshAll()">Refresh All Statuses</button>
+  <button class="refresh-btn" id="reload-csv-btn" onclick="reloadCSV()" style="background-color: #4CAF50; margin-top: 0;">Reload CSV</button>
   <div class="dashboard" id="dashboard"></div>
 
   <script>
@@ -266,6 +267,27 @@ document.addEventListener('DOMContentLoaded', () => {
   fetchData();
   setupWebSocket();
 });
+
+async function reloadCSV() {
+  const btn = document.getElementById('reload-csv-btn');
+  btn.disabled = true;
+  btn.textContent = 'Reloading...';
+  try {
+    const response = await fetch('/api/reload-csv', { method: 'POST' });
+    const result = await response.json();
+    if (result.success) {
+      await fetchData();
+      alert('CSV reloaded successfully!');
+    } else {
+      alert('Failed to reload CSV: ' + (result.error || 'Unknown error'));
+    }
+  } catch (error) {
+    alert('Error reloading CSV: ' + error.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Reload CSV';
+  }
+}
     
   </script>
   <style>
