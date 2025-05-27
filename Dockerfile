@@ -11,7 +11,6 @@ RUN npm install --production && npm cache clean --force
 
 # Copy only necessary files
 COPY public/ public/
-COPY img/ img/
 COPY server.js .
 COPY Node.csv .
 
