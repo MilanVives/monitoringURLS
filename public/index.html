@@ -109,6 +109,19 @@
       pointer-events: none;
       filter: grayscale(80%);
     }
+    
+    .latency-bar {
+      height: 6px;
+      border-radius: 3px;
+      margin: 6px 0 10px 0;
+      width: 100%;
+      background: #eee;
+      transition: background 0.3s;
+    }
+    .latency-fast { background: #4CAF50; }
+    .latency-medium { background: #FFC107; }
+    .latency-slow { background: #F44336; }
+    .latency-unavailable { background: #bbb; }
   </style>
 </head>
 <body>
@@ -147,11 +160,20 @@
       data.forEach(item => {
         const tile = document.createElement('div');
         tile.className = `tile ${item.status}${item.grayedOut ? ' grayed-out' : ''}`;
+        let latencyClass = 'latency-unavailable';
+        if (typeof item.latency === 'number') {
+          if (item.latency <= 300) latencyClass = 'latency-fast';
+          else if (item.latency <= 1000) latencyClass = 'latency-medium';
+          else latencyClass = 'latency-slow';
+        }
         tile.innerHTML = `
   <div class="name">${item.name} ${item.submissionCount ? `(${item.submissionCount})` : ''}</div>
   <div class="submission-time">Submitted ${item.timeSinceSubmission}</div>
   <div class="url">
     ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.url}</a>` : 'No URL provided'}
+  </div>
+  <div class="latency">Latency: ${typeof item.latency === 'number' ? item.latency + ' ms' : '-'}
+    <div class="latency-bar ${latencyClass}"></div>
   </div>
   <div class="uptime-stats ${item.status === 'error' ? 'error' : ''}">
     ${item.uptimeStats}
