@@ -103,6 +103,12 @@
       text-align: center;
       margin-bottom: 20px;
     }
+    
+    .tile.grayed-out {
+      opacity: 0.5;
+      pointer-events: none;
+      filter: grayscale(80%);
+    }
   </style>
 </head>
 <body>
@@ -140,11 +146,9 @@
       
       data.forEach(item => {
         const tile = document.createElement('div');
-        tile.className = `tile ${item.status}`;
-        
-       // In the renderDashboard function
-tile.innerHTML = `
-  <div class="name">${item.name}</div>
+        tile.className = `tile ${item.status}${item.grayedOut ? ' grayed-out' : ''}`;
+        tile.innerHTML = `
+  <div class="name">${item.name} ${item.submissionCount ? `(${item.submissionCount})` : ''}</div>
   <div class="submission-time">Submitted ${item.timeSinceSubmission}</div>
   <div class="url">
     ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.url}</a>` : 'No URL provided'}
@@ -157,10 +161,8 @@ tile.innerHTML = `
   <div class="status ${item.status}">
     ${item.status === 'online' ? 'Online' : item.status === 'offline' ? 'Offline' : 'Error'}
   </div>
-  <button onclick="refreshSingle('${item.url}', this)">Refresh</button>
+  ${!item.grayedOut ? `<button onclick="refreshSingle('${item.url}', this)">Refresh</button>` : ''}
 `;
-
-
         dashboard.appendChild(tile);
       });
     }

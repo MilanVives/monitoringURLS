@@ -10,6 +10,7 @@ A real-time dashboard to monitor the status of Node.js project deployments from 
 - ⚡ **Instant updates** via WebSocket connection
 - 📅 **Submission time tracking** (days/hours since deployed)
 - 📈 **Uptime statistics** with historical data
+- 🔢 **Submission count per user** (number of submissions shown next to each user's name)
 - 🔗 **Direct links** to live deployments and GitHub repos
 - 🛡️ **Dockerized** for easy deployment
 - 📱 **Fully responsive** design
@@ -92,6 +93,7 @@ Example row:
 - Status changes trigger WebSocket events
 - Frontend updates specific tiles without refresh
 - Uptime statistics recalculate automatically
+- **Each user's tile shows the number of submissions (based on unique email) in parentheses next to their name. Only the latest submission is fully visible; earlier ones are grayed out.**
 
 ### Configuration
 
