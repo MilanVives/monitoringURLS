@@ -184,7 +184,7 @@ app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
     const { online, latency } = await checkUrlStatus(url);
     server.currentStatus = online ? 'online' : 'offline';
     server.currentLatency = latency;
-    await dbService.addStatusCheck(server._id.toString(), online ? 'online' : 'offline', latency);
+    await dbService.updateServerStatus(server._id.toString(), online ? 'online' : 'offline', latency);
     console.log(`[MANUAL ADD] Initial status check: ${server.currentStatus}`);
     
     // Broadcast to WebSocket clients
