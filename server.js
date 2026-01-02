@@ -486,18 +486,39 @@ async function initialize() {
   try {
     await connectDB();
     
-    const csvData = await processCSV();
-    const servers = await dbService.syncServersFromCSV(csvData);
-    urlData = servers;
+    // Load all servers from database (includes CSV + manually added)
+    console.log('[INIT] Loading servers from database...');
+    const dbServers = await dbService.getAllServers();
     
-    console.log(`[INIT] Loaded ${urlData.length} servers from database`);
+    if (dbServers.length > 0) {
+      // Database has servers, use those
+      urlData = dbServers;
+      console.log(`[INIT] Loaded ${urlData.length} servers from database`);
+    } else {
+      // Empty database, try to import from CSV if it exists
+      console.log('[INIT] Database is empty, checking for CSV file...');
+      try {
+        const csvData = await processCSV();
+        if (csvData.length > 0) {
+          const servers = await dbService.syncServersFromCSV(csvData);
+          urlData = servers;
+          console.log(`[INIT] Imported ${urlData.length} servers from CSV`);
+        } else {
+          urlData = [];
+          console.log('[INIT] No servers found in CSV');
+        }
+      } catch (csvError) {
+        console.log('[INIT] No CSV file found or error reading CSV');
+        urlData = [];
+      }
+    }
     
     if (urlData.length > 0) {
       console.log('[INIT] Running initial status check...');
       await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
       console.log('[INIT] Initial status check complete');
     } else {
-      console.log('[INIT] No servers to monitor yet. Upload CSV via admin panel.');
+      console.log('[INIT] No servers to monitor yet. Upload CSV or add servers via admin panel.');
     }
     
     // Start monitoring loop
