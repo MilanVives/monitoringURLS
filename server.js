@@ -210,14 +210,35 @@ app.post('/api/admin/upload-csv', requireAuth, upload.single('csvFile'), async (
     const uploadedPath = req.file.path;
     const targetPath = path.join(__dirname, 'Node.csv');
     
+    console.log(`[CSV Upload] Copying from ${uploadedPath} to ${targetPath}`);
+    
+    // Copy uploaded file to Node.csv
     fs.copyFileSync(uploadedPath, targetPath);
+    
+    // Delete temp file
     fs.unlinkSync(uploadedPath);
     
-    // Detect headers from the CSV
-    const headers = await detectCSVHeaders(targetPath);
+    console.log('[CSV Upload] File copied successfully, detecting headers...');
     
+    // Detect headers from the CSV
+    let headers = [];
+    try {
+      headers = await detectCSVHeaders(targetPath);
+      console.log(`[CSV Upload] Detected ${headers.length} headers`);
+    } catch (headerError) {
+      console.error('[CSV Upload] Error detecting headers:', headerError);
+      headers = [];
+    }
+    
+    console.log('[CSV Upload] Processing CSV...');
+    
+    // Process CSV
     const csvData = await processCSV();
+    console.log(`[CSV Upload] Processed ${csvData.length} records`);
+    
+    // Sync to database
     const servers = await dbService.syncServersFromCSV(csvData);
+    console.log(`[CSV Upload] Synced ${servers.length} servers to database`);
     
     res.json({ 
       success: true, 
@@ -226,8 +247,11 @@ app.post('/api/admin/upload-csv', requireAuth, upload.single('csvFile'), async (
       detectedColumns: headers.length
     });
   } catch (error) {
-    console.error('Error uploading CSV:', error);
-    res.status(500).json({ error: error.message });
+    console.error('[CSV Upload] Error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 

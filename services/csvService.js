@@ -35,20 +35,33 @@ async function getActiveMapping() {
 
 async function detectCSVHeaders(filePath) {
   return new Promise((resolve, reject) => {
-    const headers = [];
-    let rowCount = 0;
+    const readline = require('readline');
+    const fileStream = fs.createReadStream(filePath);
+    const rl = readline.createInterface({ 
+      input: fileStream, 
+      crlfDelay: Infinity 
+    });
     
-    fs.createReadStream(filePath)
-      .on('data', (chunk) => {
-        if (rowCount === 0) {
-          const line = chunk.toString().split('\n')[0];
-          const cols = line.split(';');
-          headers.push(...cols);
-          rowCount++;
-        }
-      })
-      .on('end', () => resolve(headers))
-      .on('error', reject);
+    let firstLine = null;
+    
+    rl.on('line', (line) => {
+      if (!firstLine) {
+        firstLine = line;
+        rl.close();
+        fileStream.close();
+      }
+    });
+    
+    rl.on('close', () => {
+      if (firstLine) {
+        const headers = firstLine.split(';');
+        resolve(headers);
+      } else {
+        resolve([]);
+      }
+    });
+    
+    rl.on('error', reject);
   });
 }
 
