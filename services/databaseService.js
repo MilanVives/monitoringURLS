@@ -4,35 +4,113 @@ const { getTimeDifference } = require('../utils/dateUtils');
 async function syncServersFromCSV(csvData) {
   const syncedServers = [];
   
-  for (const data of csvData) {
+  // Filter out grayed-out entries (only keep latest per email)
+  const latestEntries = csvData.filter(data => !data.grayedOut);
+  
+  // Process each latest entry
+  for (const data of latestEntries) {
     const { name, url, email, github, documentation, submissionTime, comments } = data;
     
-    let server = await Server.findOne({ url });
+    let server;
     
-    if (server) {
-      server.name = name;
-      server.email = email;
-      server.github = github;
-      server.documentation = documentation;
-      server.submissionTime = submissionTime;
-      server.comments = comments;
-      server.updatedAt = new Date();
-      await server.save();
+    // First, try to find existing server by email
+    if (email) {
+      server = await Server.findOne({ email });
+      
+      if (server) {
+        // Update existing server for this email
+        // If URL changed, update it
+        const urlChanged = server.url !== url;
+        
+        server.name = name;
+        server.url = url;
+        server.github = github;
+        server.documentation = documentation;
+        server.submissionTime = submissionTime;
+        server.comments = comments;
+        server.updatedAt = new Date();
+        
+        if (urlChanged) {
+          // Reset status history if URL changed
+          console.log(`URL changed for ${email}: ${server.url} -> ${url}`);
+          server.statusHistory = [];
+          server.currentStatus = 'unknown';
+          server.currentLatency = null;
+        }
+        
+        await server.save();
+      } else {
+        // No server exists for this email, check if URL exists without email
+        const serverByUrl = await Server.findOne({ url });
+        
+        if (serverByUrl) {
+          // Update existing server found by URL
+          serverByUrl.name = name;
+          serverByUrl.email = email;
+          serverByUrl.github = github;
+          serverByUrl.documentation = documentation;
+          serverByUrl.submissionTime = submissionTime;
+          serverByUrl.comments = comments;
+          serverByUrl.updatedAt = new Date();
+          await serverByUrl.save();
+          server = serverByUrl;
+        } else {
+          // Create new server
+          server = new Server({
+            name,
+            url,
+            email,
+            github,
+            documentation,
+            submissionTime,
+            comments,
+            currentStatus: 'unknown'
+          });
+          await server.save();
+        }
+      }
     } else {
-      server = new Server({
-        name,
-        url,
-        email,
-        github,
-        documentation,
-        submissionTime,
-        comments,
-        currentStatus: 'unknown'
-      });
-      await server.save();
+      // No email provided, just check by URL
+      server = await Server.findOne({ url });
+      
+      if (server) {
+        server.name = name;
+        server.email = email;
+        server.github = github;
+        server.documentation = documentation;
+        server.submissionTime = submissionTime;
+        server.comments = comments;
+        server.updatedAt = new Date();
+        await server.save();
+      } else {
+        server = new Server({
+          name,
+          url,
+          email,
+          github,
+          documentation,
+          submissionTime,
+          comments,
+          currentStatus: 'unknown'
+        });
+        await server.save();
+      }
     }
     
     syncedServers.push(server);
+  }
+  
+  // Clean up: Remove any servers with emails that are no longer in the latest CSV data
+  const latestEmails = latestEntries.filter(e => e.email).map(e => e.email);
+  if (latestEmails.length > 0) {
+    const serversToRemove = await Server.find({
+      email: { $exists: true, $ne: null, $nin: latestEmails }
+    });
+    
+    for (const oldServer of serversToRemove) {
+      console.log(`Removing old server for ${oldServer.email}: ${oldServer.url}`);
+      await Server.deleteOne({ _id: oldServer._id });
+    }
   }
   
   return syncedServers;

@@ -10,6 +10,7 @@ const { processCSV, getActiveMapping, detectCSVHeaders } = require('./services/c
 const { updateAllStatuses, checkUrlStatus } = require('./services/uptimeService');
 const { setupWebSocketServer, broadcastStatusUpdate } = require('./services/wsService');
 const { requireAuth, ADMIN_PASSWORD } = require('./middleware/auth');
+const { logAccess } = require('./middleware/accessLogger');
 const dbService = require('./services/databaseService');
 const CSVMapping = require('./models/CSVMapping');
 
@@ -27,6 +28,18 @@ app.use(session({
   saveUninitialized: false,
   cookie: { secure: false, maxAge: 24 * 60 * 60 * 1000 }
 }));
+
+// Apply IP logging to specific routes
+app.use('/', (req, res, next) => {
+  // Only log specific pages/endpoints
+  const pathsToLog = ['/', '/admin.html', '/server.html', '/api/admin'];
+  
+  if (pathsToLog.some(p => req.path === p || req.path.startsWith(p))) {
+    return logAccess(req, res, next);
+  }
+  next();
+});
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // API endpoint to get all URL data
@@ -322,6 +335,79 @@ app.get('/api/admin/csv-preview', requireAuth, async (req, res) => {
     }
     
     res.json({ headers: rows[0], preview: rows.slice(1, 6) });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Access Logs endpoints
+app.get('/api/admin/access-logs', requireAuth, async (req, res) => {
+  try {
+    const AccessLog = require('./models/AccessLog');
+    const limit = parseInt(req.query.limit) || 100;
+    const page = parseInt(req.query.page) || 1;
+    const skip = (page - 1) * limit;
+    
+    const logs = await AccessLog.find()
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .skip(skip);
+    
+    const total = await AccessLog.countDocuments();
+    
+    res.json({ 
+      logs, 
+      total,
+      page,
+      pages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/admin/access-logs/stats', requireAuth, async (req, res) => {
+  try {
+    const AccessLog = require('./models/AccessLog');
+    
+    // Get stats for last 24 hours
+    const last24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    
+    const [
+      totalToday,
+      uniqueIPs,
+      topPaths,
+      recentLogs
+    ] = await Promise.all([
+      AccessLog.countDocuments({ timestamp: { $gte: last24h } }),
+      AccessLog.distinct('ip', { timestamp: { $gte: last24h } }),
+      AccessLog.aggregate([
+        { $match: { timestamp: { $gte: last24h } } },
+        { $group: { _id: '$path', count: { $sum: 1 } } },
+        { $sort: { count: -1 } },
+        { $limit: 10 }
+      ]),
+      AccessLog.find({ timestamp: { $gte: last24h } })
+        .sort({ timestamp: -1 })
+        .limit(10)
+    ]);
+    
+    res.json({
+      totalToday,
+      uniqueIPsToday: uniqueIPs.length,
+      topPaths,
+      recentLogs
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/access-logs/clear', requireAuth, async (req, res) => {
+  try {
+    const AccessLog = require('./models/AccessLog');
+    const result = await AccessLog.deleteMany({});
+    res.json({ success: true, deletedCount: result.deletedCount });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

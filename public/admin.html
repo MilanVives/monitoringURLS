@@ -281,6 +281,29 @@
         <h3>All Servers</h3>
         <div id="servers-container">Loading...</div>
       </div>
+      
+      <div class="server-list" style="margin-top: 20px;">
+        <h3>Access Logs (Last 24 Hours)</h3>
+        <div style="margin-bottom: 15px;">
+          <button class="btn btn-primary" onclick="loadAccessLogs()">Refresh Logs</button>
+          <button class="btn btn-danger" onclick="confirmClearAccessLogs()">Clear All Logs</button>
+        </div>
+        <div id="access-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+          <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #2196F3;" id="total-visits">0</div>
+            <div style="color: #666;">Total Visits</div>
+          </div>
+          <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #4CAF50;" id="unique-ips">0</div>
+            <div style="color: #666;">Unique IPs</div>
+          </div>
+          <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #FF9800;" id="admin-visits">0</div>
+            <div style="color: #666;">Admin Visits</div>
+          </div>
+        </div>
+        <div id="access-logs-container" style="max-height: 400px; overflow-y: auto;">Loading...</div>
+      </div>
     </div>
   </div>
 
@@ -423,6 +446,7 @@
       document.getElementById('admin-section').style.display = 'block';
       authenticated = true;
       loadServers();
+      loadAccessLogs();
     }
     
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -798,6 +822,87 @@
       checkAuth();
       loadCurrentMapping();
     });
+    
+    // Access Logs Functions
+    async function loadAccessLogs() {
+      try {
+        const [statsResponse, logsResponse] = await Promise.all([
+          fetch('/api/admin/access-logs/stats', { credentials: 'same-origin' }),
+          fetch('/api/admin/access-logs?limit=50', { credentials: 'same-origin' })
+        ]);
+        
+        const stats = await statsResponse.json();
+        const logsData = await logsResponse.json();
+        
+        // Update stats
+        document.getElementById('total-visits').textContent = stats.totalToday;
+        document.getElementById('unique-ips').textContent = stats.uniqueIPsToday;
+        
+        const adminVisits = stats.topPaths.find(p => p._id.includes('/admin'))?.count || 0;
+        document.getElementById('admin-visits').textContent = adminVisits;
+        
+        // Render logs
+        const container = document.getElementById('access-logs-container');
+        if (logsData.logs.length === 0) {
+          container.innerHTML = '<p>No access logs yet</p>';
+          return;
+        }
+        
+        let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
+        html += '<thead><tr style="background: #f5f5f5;">';
+        html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Time</th>';
+        html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">IP Address</th>';
+        html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Path</th>';
+        html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">User Agent</th>';
+        html += '</tr></thead><tbody>';
+        
+        logsData.logs.forEach(log => {
+          const time = new Date(log.timestamp).toLocaleString();
+          const pathColor = log.path.includes('/admin') ? '#FF9800' : 
+                           log.path.includes('/server') ? '#2196F3' : '#666';
+          html += '<tr>';
+          html += `<td style="padding: 8px; border: 1px solid #ddd;">${time}</td>`;
+          html += `<td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${log.ip}</td>`;
+          html += `<td style="padding: 8px; border: 1px solid #ddd; color: ${pathColor}; font-weight: bold;">${log.path}</td>`;
+          html += `<td style="padding: 8px; border: 1px solid #ddd; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${log.userAgent || 'Unknown'}</td>`;
+          html += '</tr>';
+        });
+        
+        html += '</tbody></table>';
+        html += `<p style="margin-top: 10px; color: #666;">Showing ${logsData.logs.length} of ${logsData.total} total logs</p>`;
+        container.innerHTML = html;
+      } catch (error) {
+        console.error('Error loading access logs:', error);
+        document.getElementById('access-logs-container').innerHTML = 
+          '<p class="error-message">Failed to load access logs</p>';
+      }
+    }
+    
+    function confirmClearAccessLogs() {
+      if (confirm('Are you sure you want to clear all access logs? This cannot be undone.')) {
+        clearAccessLogs();
+      }
+    }
+    
+    async function clearAccessLogs() {
+      try {
+        const response = await fetch('/api/admin/access-logs/clear', {
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert(`Cleared ${result.deletedCount} access logs`);
+          loadAccessLogs();
+        } else {
+          alert('Failed to clear logs');
+        }
+      } catch (error) {
+        alert('Error clearing logs: ' + error.message);
+      }
+    }
     
     // Manual Entry Functions
     function showManualEntryModal() {
