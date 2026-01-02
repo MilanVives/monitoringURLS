@@ -367,10 +367,20 @@ app.delete('/api/admin/csv-mapping/:id', requireAuth, async (req, res) => {
 app.get('/api/admin/csv-preview', requireAuth, async (req, res) => {
   try {
     const targetPath = path.join(__dirname, 'Node.csv');
+    
+    // Check if file exists
+    const fs = require('fs');
+    if (!fs.existsSync(targetPath)) {
+      return res.json({ 
+        headers: [], 
+        preview: [],
+        message: 'No CSV file uploaded yet. Please upload a CSV file first.'
+      });
+    }
+    
     const headers = await detectCSVHeaders(targetPath);
     
     // Read first 5 rows for preview
-    const fs = require('fs');
     const readline = require('readline');
     const fileStream = fs.createReadStream(targetPath);
     const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
@@ -387,9 +397,17 @@ app.get('/api/admin/csv-preview', requireAuth, async (req, res) => {
       }
     }
     
-    res.json({ headers: rows[0], preview: rows.slice(1, 6) });
+    res.json({ 
+      headers: rows.length > 0 ? rows[0] : [], 
+      preview: rows.slice(1, 6) 
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[CSV Preview] Error:', error);
+    res.status(500).json({ 
+      error: error.message,
+      headers: [],
+      preview: []
+    });
   }
 });
 
