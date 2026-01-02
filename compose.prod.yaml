@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   mongodb:
     image: mongo:7
@@ -16,7 +18,7 @@ services:
       retries: 5
 
   monitor:
-    build: .
+    image: ghcr.io/milanvives/monitoringurls:latest
     container_name: url-monitor
     depends_on:
       mongodb:
