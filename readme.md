@@ -78,6 +78,22 @@ Create a `.env` file in the project root:
 | ADMIN_PASSWORD | admin123 | Password for admin panel |
 | SESSION_SECRET | (random) | Secret for session encryption |
 | PORT | 3000 | Application port |
+| CLOUDFLARE_TUNNEL_TOKEN | (none) | Cloudflare Tunnel token for public access (optional) |
+
+### Cloudflare Tunnel (Optional)
+
+For production deployment with public HTTPS access:
+
+1. Create a Cloudflare Tunnel at https://one.dash.cloudflare.com/
+2. Copy your tunnel token
+3. Add to `.env` file:
+   ```
+   CLOUDFLARE_TUNNEL_TOKEN=eyJhIjoixxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+   ```
+4. Configure public hostname in Cloudflare dashboard
+5. Deploy with `docker compose up -d`
+
+See `CLOUDFLARE_TUNNEL_SETUP.md` for detailed instructions.
 
 ## Admin Panel
 
