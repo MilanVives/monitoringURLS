@@ -17,7 +17,9 @@ COPY public/ public/
 COPY services/ services/
 COPY utils/ utils/
 COPY server.js .
-COPY Node.csv .
+
+# Create empty CSV as placeholder (will be replaced by volume mount or upload)
+RUN touch Node.csv && chown appuser:appgroup Node.csv
 
 # Set environment variables
 ENV NODE_ENV=production \
