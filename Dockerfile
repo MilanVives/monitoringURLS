@@ -21,6 +21,9 @@ COPY server.js .
 # Create empty CSV as placeholder (will be replaced by volume mount or upload)
 RUN touch Node.csv && chown appuser:appgroup Node.csv
 
+# Create uploads directory with correct permissions
+RUN mkdir -p uploads && chown -R appuser:appgroup uploads
+
 # Set environment variables
 ENV NODE_ENV=production \
     PORT=3000 \
