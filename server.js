@@ -240,6 +240,12 @@ app.post('/api/admin/upload-csv', requireAuth, upload.single('csvFile'), async (
     const servers = await dbService.syncServersFromCSV(csvData);
     console.log(`[CSV Upload] Synced ${servers.length} servers to database`);
     
+    // Update urlData and trigger immediate check
+    urlData = servers;
+    console.log('[CSV Upload] Starting immediate status check...');
+    await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
+    console.log('[CSV Upload] Status check complete');
+    
     res.json({ 
       success: true, 
       message: `Imported ${servers.length} servers`,
@@ -462,14 +468,30 @@ async function initialize() {
     const servers = await dbService.syncServersFromCSV(csvData);
     urlData = servers;
     
-    await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
-    console.log(`Processed ${urlData.length} URLs`);
+    console.log(`[INIT] Loaded ${urlData.length} servers from database`);
+    
     if (urlData.length > 0) {
-      console.log('Sample data:', urlData[0]);
+      console.log('[INIT] Running initial status check...');
+      await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
+      console.log('[INIT] Initial status check complete');
+    } else {
+      console.log('[INIT] No servers to monitor yet. Upload CSV via admin panel.');
     }
-    setInterval(() => updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status)), 5 * 60 * 1000);
+    
+    // Start monitoring loop
+    const checkInterval = parseInt(process.env.CHECK_INTERVAL || '300000', 10);
+    console.log(`[INIT] Starting monitoring loop - checking every ${checkInterval / 1000} seconds`);
+    
+    setInterval(async () => {
+      if (urlData.length > 0) {
+        console.log(`[MONITOR] Running scheduled check for ${urlData.length} servers...`);
+        await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
+        console.log('[MONITOR] Scheduled check complete');
+      }
+    }, checkInterval);
+    
   } catch (error) {
-    console.error('Initialization failed:', error);
+    console.error('[INIT] Initialization failed:', error);
   }
 }
 
