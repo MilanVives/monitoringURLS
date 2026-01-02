@@ -106,7 +106,6 @@ async function syncServersFromCSV(csvData) {
   
   return syncedServers;
 }
-}
 
 async function updateServerStatus(serverId, status, latency) {
   const server = await Server.findById(serverId);
