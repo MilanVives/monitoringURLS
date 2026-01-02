@@ -1,21 +1,47 @@
 version: '3.8'
 
 services:
+  mongodb:
+    image: mongo:7
+    container_name: monitoring-mongodb
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_DATABASE=monitoring
+    volumes:
+      - mongodb_data:/data/db
+    ports:
+      - "27017:27017"
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/monitoring --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   monitor:
     build: .
     container_name: url-monitor
+    depends_on:
+      mongodb:
+        condition: service_healthy
     ports:
       - "3000:3000"
     volumes:
       - ./Node.csv:/usr/src/app/Node.csv
       - ./public:/usr/src/app/public
       - ./img:/usr/src/app/img
+      - ./uploads:/usr/src/app/uploads
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - CHECK_INTERVAL=300000
+      - MONGODB_URI=mongodb://mongodb:27017/monitoring
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - SESSION_SECRET=${SESSION_SECRET:-change-this-secret-in-production}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/urls"]
       interval: 30s
       timeout: 5s
       retries: 3
+
+volumes:
+  mongodb_data:

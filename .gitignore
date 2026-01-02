@@ -1,2 +1,5 @@
 node_modules
 Node.csv
+.env
+uploads/*
+!uploads/.gitkeep

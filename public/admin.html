@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Server Monitoring</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+    
+    .login-form {
+      max-width: 400px;
+      margin: 100px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .login-form h2 {
+      margin-top: 0;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: bold;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+    }
+    
+    .btn-primary {
+      background-color: #2196F3;
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: #0b7dda;
+    }
+    
+    .btn-danger {
+      background-color: #F44336;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background-color: #d32f2f;
+    }
+    
+    .btn-success {
+      background-color: #4CAF50;
+      color: white;
+    }
+    
+    .btn-success:hover {
+      background-color: #45a049;
+    }
+    
+    .btn-warning {
+      background-color: #FFC107;
+      color: #333;
+    }
+    
+    .btn-warning:hover {
+      background-color: #ffb300;
+    }
+    
+    .admin-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .actions {
+      margin-bottom: 20px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .actions h3 {
+      margin-top: 0;
+    }
+    
+    .server-list {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .server-item {
+      padding: 15px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .server-item:last-child {
+      border-bottom: none;
+    }
+    
+    .server-item.hidden {
+      background-color: #f9f9f9;
+      opacity: 0.6;
+    }
+    
+    .server-info {
+      flex: 1;
+    }
+    
+    .server-name {
+      font-weight: bold;
+      font-size: 18px;
+    }
+    
+    .server-url {
+      color: #666;
+      margin: 5px 0;
+    }
+    
+    .server-status {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-right: 10px;
+    }
+    
+    .server-status.online {
+      background-color: #E8F5E9;
+      color: #4CAF50;
+    }
+    
+    .server-status.offline {
+      background-color: #FFEBEE;
+      color: #F44336;
+    }
+    
+    .server-status.unknown {
+      background-color: #FFF8E1;
+      color: #FFA000;
+    }
+    
+    .server-actions {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .hidden-badge {
+      display: inline-block;
+      background-color: #FF9800;
+      color: white;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 10px;
+    }
+    
+    .file-input-wrapper {
+      position: relative;
+      overflow: hidden;
+      display: inline-block;
+    }
+    
+    .file-input-wrapper input[type=file] {
+      position: absolute;
+      left: -9999px;
+    }
+    
+    .error-message {
+      color: #F44336;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #FFEBEE;
+      border-radius: 4px;
+    }
+    
+    .success-message {
+      color: #4CAF50;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #E8F5E9;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="login-section" class="login-form">
+      <h2>Admin Login</h2>
+      <form id="login-form">
+        <div class="form-group">
+          <label for="password">Password:</label>
+          <input type="password" id="password" name="password" required>
+        </div>
+        <button type="submit" class="btn btn-primary">Login</button>
+      </form>
+      <div id="login-error" style="display: none;" class="error-message"></div>
+    </div>
+    
+    <div id="admin-section" style="display: none;">
+      <div class="admin-header">
+        <h1>Admin Dashboard</h1>
+        <button class="btn btn-danger" onclick="logout()">Logout</button>
+      </div>
+      
+      <div class="actions">
+        <h3>Database Actions</h3>
+        <button class="btn btn-danger" onclick="confirmClearDatabase()">Clear Database</button>
+        <button class="btn btn-success" onclick="showManualEntryModal()">Add Server Manually</button>
+        <button class="btn btn-primary" onclick="document.getElementById('back-home').click()">Back to Dashboard</button>
+        <a href="/" id="back-home" style="display: none;"></a>
+      </div>
+      
+      <div class="actions">
+        <h3>Upload New CSV</h3>
+        <form id="csv-upload-form">
+          <div class="file-input-wrapper">
+            <button type="button" class="btn btn-success" onclick="document.getElementById('csv-file').click()">
+              Choose CSV File
+            </button>
+            <input type="file" id="csv-file" name="csvFile" accept=".csv" required>
+          </div>
+          <span id="file-name" style="margin-left: 10px;"></span>
+          <button type="submit" class="btn btn-primary">Upload & Import</button>
+        </form>
+        <div id="upload-message"></div>
+      </div>
+      
+      <div class="actions">
+        <h3>CSV Column Mapping</h3>
+        <p style="margin-bottom: 15px; color: #666;">Configure which columns from your CSV file map to the required data fields.</p>
+        <button class="btn btn-primary" onclick="showMappingEditor()">Edit Column Mapping</button>
+        <button class="btn btn-success" onclick="loadCSVPreview()" style="margin-left: 10px;">Preview CSV</button>
+        <div id="mapping-info" style="margin-top: 10px; padding: 10px; background: #f9f9f9; border-radius: 4px; display: none;"></div>
+      </div>
+      
+      <div class="server-list">
+        <h3>All Servers</h3>
+        <div id="servers-container">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CSV Mapping Modal -->
+  <div id="mapping-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+    <div style="max-width: 900px; margin: 50px auto; background: white; border-radius: 8px; padding: 30px;">
+      <h2>CSV Column Mapping Configuration</h2>
+      <p style="color: #666; margin-bottom: 20px;">Map CSV columns to data fields. Column numbers start at 0.</p>
+      
+      <div id="csv-preview-section" style="margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 4px; max-height: 200px; overflow-x: auto;"></div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <div class="form-group">
+          <label for="mapping-name">Mapping Name:</label>
+          <input type="text" id="mapping-name" value="Default Mapping" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="mapping-separator">Column Separator:</label>
+          <input type="text" id="mapping-separator" value=";" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+      </div>
+      
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+        <div class="form-group">
+          <label for="col-name">Student Name Column:</label>
+          <input type="number" id="col-name" min="0" value="4" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-url">URL Column:</label>
+          <input type="number" id="col-url" min="0" value="8" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-email">Email Column:</label>
+          <input type="number" id="col-email" min="0" value="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-github">GitHub Column:</label>
+          <input type="number" id="col-github" min="0" value="7" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-documentation">Documentation Column:</label>
+          <input type="number" id="col-documentation" min="0" value="9" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-submission-time">Submission Time Column:</label>
+          <input type="number" id="col-submission-time" min="0" value="2" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="col-comments">Comments Column:</label>
+          <input type="number" id="col-comments" min="0" value="20" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 10px; justify-content: flex-end;">
+        <button class="btn btn-primary" onclick="saveMappingConfiguration()">Save Mapping</button>
+        <button class="btn" style="background: #666; color: white;" onclick="closeMappingEditor()">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Manual Entry Modal -->
+  <div id="manual-entry-modal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; overflow-y: auto;">
+    <div style="max-width: 700px; margin: 50px auto; background: white; border-radius: 8px; padding: 30px;">
+      <h2>Add Server Manually</h2>
+      <p style="color: #666; margin-bottom: 20px;">Enter server details to add a new monitored server.</p>
+      
+      <form id="manual-entry-form">
+        <div class="form-group">
+          <label for="manual-name">Server Name: *</label>
+          <input type="text" id="manual-name" required style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="manual-url">URL: *</label>
+          <input type="url" id="manual-url" required placeholder="https://example.com" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="manual-email">Email:</label>
+          <input type="email" id="manual-email" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="manual-github">GitHub URL:</label>
+          <input type="url" id="manual-github" placeholder="https://github.com/user/repo" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="manual-documentation">Documentation URL:</label>
+          <input type="url" id="manual-documentation" placeholder="https://docs.example.com" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+        </div>
+        
+        <div class="form-group">
+          <label for="manual-comments">Comments:</label>
+          <textarea id="manual-comments" rows="3" style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;"></textarea>
+        </div>
+        
+        <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary">Add Server</button>
+          <button type="button" class="btn" style="background: #666; color: white;" onclick="closeManualEntryModal()">Cancel</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let authenticated = false;
+    
+    async function checkAuth() {
+      try {
+        const response = await fetch('/api/admin/check-auth', {
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (data.authenticated) {
+          showAdminSection();
+        } else {
+          showLoginSection();
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        showLoginSection();
+      }
+    }
+    
+    function showLoginSection() {
+      document.getElementById('login-section').style.display = 'block';
+      document.getElementById('admin-section').style.display = 'none';
+    }
+    
+    function showAdminSection() {
+      document.getElementById('login-section').style.display = 'none';
+      document.getElementById('admin-section').style.display = 'block';
+      authenticated = true;
+      loadServers();
+    }
+    
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const password = document.getElementById('password').value;
+      
+      try {
+        const response = await fetch('/api/admin/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ password })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showAdminSection();
+        } else {
+          showError('Invalid password');
+        }
+      } catch (error) {
+        showError('Login failed: ' + error.message);
+      }
+    });
+    
+    function showError(message) {
+      const errorDiv = document.getElementById('login-error');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+      setTimeout(() => {
+        errorDiv.style.display = 'none';
+      }, 3000);
+    }
+    
+    async function logout() {
+      try {
+        await fetch('/api/admin/logout', { 
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        authenticated = false;
+        showLoginSection();
+      } catch (error) {
+        console.error('Logout failed:', error);
+      }
+    }
+    
+    async function loadServers() {
+      try {
+        const response = await fetch('/api/admin/servers', {
+          credentials: 'same-origin'
+        });
+        const servers = await response.json();
+        renderServers(servers);
+      } catch (error) {
+        console.error('Error loading servers:', error);
+        document.getElementById('servers-container').innerHTML = 
+          '<p class="error-message">Failed to load servers</p>';
+      }
+    }
+    
+    function renderServers(servers) {
+      const container = document.getElementById('servers-container');
+      
+      if (servers.length === 0) {
+        container.innerHTML = '<p>No servers found</p>';
+        return;
+      }
+      
+      container.innerHTML = servers.map(server => `
+        <div class="server-item ${server.hidden ? 'hidden' : ''}">
+          <div class="server-info">
+            <div class="server-name">
+              ${server.name}
+              ${server.hidden ? '<span class="hidden-badge">HIDDEN</span>' : ''}
+            </div>
+            <div class="server-url">${server.url}</div>
+            <div>
+              <span class="server-status ${server.currentStatus}">${server.currentStatus}</span>
+              ${server.email ? `<span style="color: #666;">Email: ${server.email}</span>` : ''}
+            </div>
+          </div>
+          <div class="server-actions">
+            ${server.hidden 
+              ? `<button class="btn btn-success" onclick="unhideServer('${server._id}')">Unhide</button>`
+              : `<button class="btn btn-warning" onclick="hideServer('${server._id}')">Hide</button>`
+            }
+            <button class="btn btn-danger" onclick="confirmDeleteServer('${server._id}', '${server.name}')">Delete</button>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    async function hideServer(id) {
+      try {
+        await fetch(`/api/admin/servers/${id}/hide`, { 
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        loadServers();
+      } catch (error) {
+        alert('Failed to hide server: ' + error.message);
+      }
+    }
+    
+    async function unhideServer(id) {
+      try {
+        await fetch(`/api/admin/servers/${id}/unhide`, { 
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        loadServers();
+      } catch (error) {
+        alert('Failed to unhide server: ' + error.message);
+      }
+    }
+    
+    function confirmDeleteServer(id, name) {
+      if (confirm(`Are you sure you want to delete server "${name}"? This action cannot be undone.`)) {
+        deleteServer(id);
+      }
+    }
+    
+    async function deleteServer(id) {
+      try {
+        await fetch(`/api/admin/servers/${id}`, { 
+          method: 'DELETE',
+          credentials: 'same-origin'
+        });
+        loadServers();
+      } catch (error) {
+        alert('Failed to delete server: ' + error.message);
+      }
+    }
+    
+    function confirmClearDatabase() {
+      if (confirm('WARNING: This will delete ALL servers from the database. This action cannot be undone. Are you sure?')) {
+        if (confirm('Are you ABSOLUTELY sure? This will permanently delete all data.')) {
+          clearDatabase();
+        }
+      }
+    }
+    
+    async function clearDatabase() {
+      try {
+        const response = await fetch('/api/admin/clear-database', { 
+          method: 'POST',
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        if (data.success) {
+          alert('Database cleared successfully');
+          loadServers();
+        } else {
+          alert('Failed to clear database: ' + data.error);
+        }
+      } catch (error) {
+        alert('Failed to clear database: ' + error.message);
+      }
+    }
+    
+    document.getElementById('csv-file').addEventListener('change', (e) => {
+      const fileName = e.target.files[0]?.name || '';
+      document.getElementById('file-name').textContent = fileName;
+    });
+    
+    document.getElementById('csv-upload-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const fileInput = document.getElementById('csv-file');
+      if (!fileInput.files[0]) {
+        showUploadMessage('Please select a file', 'error');
+        return;
+      }
+      
+      const formData = new FormData();
+      formData.append('csvFile', fileInput.files[0]);
+      
+      try {
+        const response = await fetch('/api/admin/upload-csv', {
+          method: 'POST',
+          credentials: 'same-origin',
+          body: formData
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+          showUploadMessage(data.message, 'success');
+          fileInput.value = '';
+          document.getElementById('file-name').textContent = '';
+          loadServers();
+        } else {
+          showUploadMessage('Upload failed: ' + data.error, 'error');
+        }
+      } catch (error) {
+        showUploadMessage('Upload failed: ' + error.message, 'error');
+      }
+    });
+    
+    function showUploadMessage(message, type) {
+      const messageDiv = document.getElementById('upload-message');
+      messageDiv.className = type === 'success' ? 'success-message' : 'error-message';
+      messageDiv.textContent = message;
+      setTimeout(() => {
+        messageDiv.textContent = '';
+        messageDiv.className = '';
+      }, 5000);
+    }
+    
+    // CSV Mapping Functions
+    async function loadCurrentMapping() {
+      try {
+        const response = await fetch('/api/admin/csv-mapping', {
+          credentials: 'same-origin'
+        });
+        const mapping = await response.json();
+        displayMappingInfo(mapping);
+        return mapping;
+      } catch (error) {
+        console.error('Error loading mapping:', error);
+      }
+    }
+    
+    function displayMappingInfo(mapping) {
+      const infoDiv = document.getElementById('mapping-info');
+      if (mapping) {
+        infoDiv.style.display = 'block';
+        infoDiv.innerHTML = `
+          <strong>Current Mapping:</strong> ${mapping.name}<br>
+          <small>Name: Col ${mapping.columnMappings.nameColumn} | URL: Col ${mapping.columnMappings.urlColumn} | 
+          Email: Col ${mapping.columnMappings.emailColumn} | GitHub: Col ${mapping.columnMappings.githubColumn}</small>
+        `;
+      }
+    }
+    
+    async function showMappingEditor() {
+      const mapping = await loadCurrentMapping();
+      
+      if (mapping) {
+        document.getElementById('mapping-name').value = mapping.name;
+        document.getElementById('mapping-separator').value = mapping.separator;
+        document.getElementById('col-name').value = mapping.columnMappings.nameColumn;
+        document.getElementById('col-url').value = mapping.columnMappings.urlColumn;
+        document.getElementById('col-email').value = mapping.columnMappings.emailColumn;
+        document.getElementById('col-github').value = mapping.columnMappings.githubColumn;
+        document.getElementById('col-documentation').value = mapping.columnMappings.documentationColumn;
+        document.getElementById('col-submission-time').value = mapping.columnMappings.submissionTimeColumn;
+        document.getElementById('col-comments').value = mapping.columnMappings.commentsColumn || 20;
+      }
+      
+      // Load CSV preview
+      await loadCSVPreviewInModal();
+      
+      document.getElementById('mapping-modal').style.display = 'block';
+    }
+    
+    function closeMappingEditor() {
+      document.getElementById('mapping-modal').style.display = 'none';
+    }
+    
+    async function loadCSVPreviewInModal() {
+      try {
+        const response = await fetch('/api/admin/csv-preview', {
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        
+        const previewSection = document.getElementById('csv-preview-section');
+        let html = '<h4 style="margin-top: 0;">CSV Preview (First 5 rows):</h4>';
+        html += '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">';
+        
+        // Header row
+        html += '<tr style="background: #e0e0e0;">';
+        data.headers.forEach((header, idx) => {
+          html += `<th style="padding: 5px; border: 1px solid #ccc; text-align: left;"><strong>Col ${idx}</strong><br>${header.substring(0, 20)}...</th>`;
+        });
+        html += '</tr>';
+        
+        // Data rows
+        data.preview.forEach(row => {
+          html += '<tr>';
+          row.forEach(cell => {
+            html += `<td style="padding: 5px; border: 1px solid #ccc;">${cell ? cell.substring(0, 30) : ''}</td>`;
+          });
+          html += '</tr>';
+        });
+        
+        html += '</table>';
+        previewSection.innerHTML = html;
+      } catch (error) {
+        console.error('Error loading CSV preview:', error);
+      }
+    }
+    
+    async function loadCSVPreview() {
+      try {
+        const response = await fetch('/api/admin/csv-preview', {
+          credentials: 'same-origin'
+        });
+        const data = await response.json();
+        
+        const infoDiv = document.getElementById('mapping-info');
+        infoDiv.style.display = 'block';
+        
+        let html = '<h4 style="margin-top: 0;">CSV Preview (First 5 rows):</h4>';
+        html += '<div style="overflow-x: auto; max-height: 300px;">';
+        html += '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">';
+        
+        // Header row
+        html += '<tr style="background: #e0e0e0;">';
+        data.headers.forEach((header, idx) => {
+          html += `<th style="padding: 5px; border: 1px solid #ccc; text-align: left;"><strong>Col ${idx}</strong><br>${header.substring(0, 30)}</th>`;
+        });
+        html += '</tr>';
+        
+        // Data rows
+        data.preview.forEach(row => {
+          html += '<tr>';
+          row.forEach(cell => {
+            html += `<td style="padding: 5px; border: 1px solid #ccc; white-space: nowrap;">${cell || ''}</td>`;
+          });
+          html += '</tr>';
+        });
+        
+        html += '</table></div>';
+        infoDiv.innerHTML = html;
+      } catch (error) {
+        alert('Error loading CSV preview: ' + error.message);
+      }
+    }
+    
+    async function saveMappingConfiguration() {
+      const mappingData = {
+        name: document.getElementById('mapping-name').value,
+        separator: document.getElementById('mapping-separator').value,
+        columnMappings: {
+          nameColumn: parseInt(document.getElementById('col-name').value),
+          urlColumn: parseInt(document.getElementById('col-url').value),
+          emailColumn: parseInt(document.getElementById('col-email').value),
+          githubColumn: parseInt(document.getElementById('col-github').value),
+          documentationColumn: parseInt(document.getElementById('col-documentation').value),
+          submissionTimeColumn: parseInt(document.getElementById('col-submission-time').value),
+          commentsColumn: parseInt(document.getElementById('col-comments').value)
+        },
+        skipLines: 1
+      };
+      
+      try {
+        const response = await fetch('/api/admin/csv-mapping', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(mappingData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('CSV column mapping saved successfully! Please reload your CSV to apply the new mapping.');
+          closeMappingEditor();
+          loadCurrentMapping();
+        } else {
+          alert('Failed to save mapping: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error saving mapping: ' + error.message);
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadCurrentMapping();
+    });
+    
+    // Manual Entry Functions
+    function showManualEntryModal() {
+      document.getElementById('manual-entry-form').reset();
+      document.getElementById('manual-entry-modal').style.display = 'block';
+    }
+    
+    function closeManualEntryModal() {
+      document.getElementById('manual-entry-modal').style.display = 'none';
+    }
+    
+    document.getElementById('manual-entry-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const serverData = {
+        name: document.getElementById('manual-name').value,
+        url: document.getElementById('manual-url').value,
+        email: document.getElementById('manual-email').value,
+        github: document.getElementById('manual-github').value,
+        documentation: document.getElementById('manual-documentation').value,
+        comments: document.getElementById('manual-comments').value,
+        submissionTime: new Date().toLocaleString('en-GB', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        }).replace(',', '')
+      };
+      
+      try {
+        const response = await fetch('/api/admin/servers/manual', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify(serverData)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('Server added successfully!');
+          closeManualEntryModal();
+          loadServers();
+        } else {
+          alert('Failed to add server: ' + result.error);
+        }
+      } catch (error) {
+        alert('Error adding server: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>

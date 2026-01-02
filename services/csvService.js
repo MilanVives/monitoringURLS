@@ -2,45 +2,98 @@ const fs = require('fs');
 const csv = require('csv-parser');
 const { getTimeDifference } = require('../utils/dateUtils');
 const { initializeUptimeHistory } = require('./uptimeService');
+const CSVMapping = require('../models/CSVMapping');
 
 const CSV_FILE = 'Node.csv';
 
-const CSV_HEADERS = [
-  'Id', 'Begintijd', 'Tijd_van_voltooien', 'Email', 'Naam', 
-  'Submission_type', 'Your_name', 'Exam_moment', 'Github_User_name', 
-  'Github_project_URL', 'Commit_count', 'Live_Deployment_URL', 
-  'Documentation_URL', 'External_Documentation_URL', 
-  'Deployment_tutorial_URL', 'Comments'
-];
+async function getActiveMapping() {
+  let mapping = await CSVMapping.findOne({ isActive: true });
+  
+  if (!mapping) {
+    // Create default mapping if none exists
+    mapping = new CSVMapping({
+      name: 'Default Mapping',
+      description: 'Default column mapping for Node.csv files',
+      isActive: true,
+      columnMappings: {
+        nameColumn: 4,
+        urlColumn: 8,
+        emailColumn: 3,
+        githubColumn: 7,
+        documentationColumn: 9,
+        submissionTimeColumn: 2,
+        commentsColumn: 20
+      },
+      separator: ';',
+      skipLines: 1
+    });
+    await mapping.save();
+  }
+  
+  return mapping;
+}
 
-async function processCSV() {
+async function detectCSVHeaders(filePath) {
+  return new Promise((resolve, reject) => {
+    const headers = [];
+    let rowCount = 0;
+    
+    fs.createReadStream(filePath)
+      .on('data', (chunk) => {
+        if (rowCount === 0) {
+          const line = chunk.toString().split('\n')[0];
+          const cols = line.split(';');
+          headers.push(...cols);
+          rowCount++;
+        }
+      })
+      .on('end', () => resolve(headers))
+      .on('error', reject);
+  });
+}
+
+async function processCSV(customMapping = null) {
+  const mapping = customMapping || await getActiveMapping();
+  const { columnMappings, separator, skipLines } = mapping;
+  
   return new Promise((resolve, reject) => {
     const allRecords = [];
+    let rowIndex = 0;
+    
     fs.createReadStream(CSV_FILE)
       .pipe(csv({
-        separator: ';',
-        headers: CSV_HEADERS,
-        skipLines: 1
+        separator: separator,
+        headers: false,
+        skipLines: skipLines
       }))
-      .on('data', (data) => {
-        const name = data.Naam;
-        const url = data.Live_Deployment_URL;
-        const submissionTime = data.Tijd_van_voltooien;
-        if (name && url && url.toLowerCase() !== 'ok') {
+      .on('data', (row) => {
+        const columns = Object.values(row);
+        
+        const name = columns[columnMappings.nameColumn];
+        const url = columns[columnMappings.urlColumn];
+        const email = columns[columnMappings.emailColumn];
+        const github = columns[columnMappings.githubColumn];
+        const documentation = columns[columnMappings.documentationColumn];
+        const submissionTime = columns[columnMappings.submissionTimeColumn];
+        const comments = columns[columnMappings.commentsColumn];
+        
+        if (name && url && url.toLowerCase() !== 'ok' && !url.toLowerCase().includes('volledig')) {
           const timeDiff = getTimeDifference(submissionTime);
           initializeUptimeHistory(url);
           allRecords.push({
             name,
             url,
-            email: data.Email,
+            email,
             status: 'unknown',
-            github: data.Github_project_URL,
-            documentation: data.Documentation_URL,
+            github,
+            documentation,
             submissionTime,
+            comments,
             timeSinceSubmission: `${timeDiff.days} days and ${timeDiff.hours} hours ago`,
             uptimeStats: 'Collecting data...'
           });
         }
+        rowIndex++;
       })
       .on('end', () => {
         // Count submissions per email
@@ -76,4 +129,4 @@ async function processCSV() {
   });
 }
 
-module.exports = { processCSV }; 
+module.exports = { processCSV, getActiveMapping, detectCSVHeaders }; 

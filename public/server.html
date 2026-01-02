@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Server Details - Monitoring</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      background-color: #2196F3;
+      color: white;
+      text-decoration: none;
+      display: inline-block;
+    }
+    
+    .btn:hover {
+      background-color: #0b7dda;
+    }
+    
+    .server-info {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    
+    .server-info h2 {
+      margin-top: 0;
+    }
+    
+    .info-row {
+      margin-bottom: 15px;
+    }
+    
+    .info-label {
+      font-weight: bold;
+      display: inline-block;
+      width: 150px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    
+    .status-badge.online {
+      background-color: #E8F5E9;
+      color: #4CAF50;
+    }
+    
+    .status-badge.offline {
+      background-color: #FFEBEE;
+      color: #F44336;
+    }
+    
+    .status-badge.unknown {
+      background-color: #FFF8E1;
+      color: #FFA000;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    
+    .stat-card {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    
+    .stat-value {
+      font-size: 32px;
+      font-weight: bold;
+      color: #2196F3;
+    }
+    
+    .stat-label {
+      color: #666;
+      margin-top: 5px;
+    }
+    
+    .history-section {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+    
+    .history-section h3 {
+      margin-top: 0;
+    }
+    
+    .history-chart {
+      height: 300px;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      margin-bottom: 20px;
+      padding: 10px;
+      background-color: #f9f9f9;
+      border-radius: 4px;
+    }
+    
+    .chart-bar {
+      flex: 1;
+      min-width: 3px;
+      background-color: #4CAF50;
+      border-radius: 2px 2px 0 0;
+      transition: background-color 0.3s;
+    }
+    
+    .chart-bar.offline {
+      background-color: #F44336;
+    }
+    
+    .chart-bar.unknown {
+      background-color: #FFC107;
+    }
+    
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    
+    .history-table th,
+    .history-table td {
+      padding: 10px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    
+    .history-table th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+    }
+    
+    .history-table tr:hover {
+      background-color: #f9f9f9;
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+    
+    .error {
+      background-color: #FFEBEE;
+      color: #F44336;
+      padding: 20px;
+      border-radius: 8px;
+      margin: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Server Details</h1>
+      <a href="/" class="btn">Back to Dashboard</a>
+    </div>
+    
+    <div id="loading" class="loading">Loading server details...</div>
+    <div id="error" class="error" style="display: none;"></div>
+    
+    <div id="content" style="display: none;">
+      <div class="server-info">
+        <h2 id="server-name">Server Name</h2>
+        <div class="info-row">
+          <span class="info-label">URL:</span>
+          <a id="server-url" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Status:</span>
+          <span id="server-status" class="status-badge"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Current Latency:</span>
+          <span id="server-latency"></span>
+        </div>
+        <div class="info-row" id="email-row" style="display: none;">
+          <span class="info-label">Email:</span>
+          <span id="server-email"></span>
+        </div>
+        <div class="info-row" id="github-row" style="display: none;">
+          <span class="info-label">GitHub:</span>
+          <a id="server-github" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+        <div class="info-row" id="docs-row" style="display: none;">
+          <span class="info-label">Documentation:</span>
+          <a id="server-docs" href="#" target="_blank" rel="noopener noreferrer"></a>
+        </div>
+        <div class="info-row" id="comments-row" style="display: none;">
+          <span class="info-label">Comments:</span>
+          <span id="server-comments" style="display: block; margin-top: 5px; color: #666; line-height: 1.5;"></span>
+        </div>
+      </div>
+      
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-value" id="uptime-percent">0%</div>
+          <div class="stat-label">Uptime</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="total-checks">0</div>
+          <div class="stat-label">Total Checks</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="online-count">0</div>
+          <div class="stat-label">Online Count</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="offline-count">0</div>
+          <div class="stat-label">Offline Count</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-value" id="avg-latency">-</div>
+          <div class="stat-label">Avg Latency (ms)</div>
+        </div>
+      </div>
+      
+      <div class="history-section">
+        <h3>Status History</h3>
+        <div class="history-chart" id="history-chart"></div>
+        
+        <h4>Recent Checks (Last 50)</h4>
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>Timestamp</th>
+              <th>Status</th>
+              <th>Latency</th>
+            </tr>
+          </thead>
+          <tbody id="history-table-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const serverId = urlParams.get('id');
+    
+    if (!serverId) {
+      showError('No server ID provided');
+    } else {
+      loadServerDetails();
+    }
+    
+    async function loadServerDetails() {
+      try {
+        const response = await fetch(`/api/server/${serverId}`);
+        
+        if (!response.ok) {
+          throw new Error('Server not found');
+        }
+        
+        const data = await response.json();
+        renderServerDetails(data);
+      } catch (error) {
+        showError('Failed to load server details: ' + error.message);
+      }
+    }
+    
+    function showError(message) {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'none';
+      const errorDiv = document.getElementById('error');
+      errorDiv.textContent = message;
+      errorDiv.style.display = 'block';
+    }
+    
+    function renderServerDetails(data) {
+      const { server, stats } = data;
+      
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+      
+      document.getElementById('server-name').textContent = server.name;
+      const urlLink = document.getElementById('server-url');
+      urlLink.href = server.url;
+      urlLink.textContent = server.url;
+      
+      const statusBadge = document.getElementById('server-status');
+      statusBadge.textContent = server.currentStatus;
+      statusBadge.className = `status-badge ${server.currentStatus}`;
+      
+      document.getElementById('server-latency').textContent = 
+        server.currentLatency ? `${server.currentLatency} ms` : 'N/A';
+      
+      if (server.email) {
+        document.getElementById('email-row').style.display = 'block';
+        document.getElementById('server-email').textContent = server.email;
+      }
+      
+      if (server.github) {
+        document.getElementById('github-row').style.display = 'block';
+        const githubLink = document.getElementById('server-github');
+        githubLink.href = server.github;
+        githubLink.textContent = server.github;
+      }
+      
+      if (server.documentation) {
+        document.getElementById('docs-row').style.display = 'block';
+        const docsLink = document.getElementById('server-docs');
+        docsLink.href = server.documentation;
+        docsLink.textContent = server.documentation;
+      }
+      
+      if (server.comments) {
+        document.getElementById('comments-row').style.display = 'block';
+        document.getElementById('server-comments').textContent = server.comments;
+      }
+      
+      document.getElementById('uptime-percent').textContent = `${stats.uptimePercentage}%`;
+      document.getElementById('total-checks').textContent = stats.totalChecks;
+      document.getElementById('online-count').textContent = stats.onlineCount;
+      document.getElementById('offline-count').textContent = stats.offlineCount;
+      document.getElementById('avg-latency').textContent = 
+        stats.averageLatency !== null ? stats.averageLatency : '-';
+      
+      renderHistoryChart(server.statusHistory);
+      renderHistoryTable(server.statusHistory);
+    }
+    
+    function renderHistoryChart(history) {
+      const chartDiv = document.getElementById('history-chart');
+      chartDiv.innerHTML = '';
+      
+      if (history.length === 0) {
+        chartDiv.innerHTML = '<p style="margin: auto;">No history data available</p>';
+        return;
+      }
+      
+      const maxToShow = 100;
+      const recentHistory = history.slice(-maxToShow);
+      
+      recentHistory.forEach(check => {
+        const bar = document.createElement('div');
+        bar.className = `chart-bar ${check.status}`;
+        bar.style.height = '100%';
+        bar.title = `${check.status} - ${new Date(check.timestamp).toLocaleString()}`;
+        chartDiv.appendChild(bar);
+      });
+    }
+    
+    function renderHistoryTable(history) {
+      const tbody = document.getElementById('history-table-body');
+      tbody.innerHTML = '';
+      
+      if (history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3">No history data available</td></tr>';
+        return;
+      }
+      
+      const recentHistory = history.slice(-50).reverse();
+      
+      recentHistory.forEach(check => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${new Date(check.timestamp).toLocaleString()}</td>
+          <td><span class="status-badge ${check.status}">${check.status}</span></td>
+          <td>${check.latency !== null ? check.latency + ' ms' : 'N/A'}</td>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+    
+    setInterval(loadServerDetails, 60000);
+  </script>
+</body>
+</html>

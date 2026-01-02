@@ -10,6 +10,9 @@ COPY package*.json ./
 RUN npm install --production && npm cache clean --force
 
 # Copy only necessary files
+COPY config/ config/
+COPY models/ models/
+COPY middleware/ middleware/
 COPY public/ public/
 COPY services/ services/
 COPY utils/ utils/

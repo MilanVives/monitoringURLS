@@ -1,4 +1,5 @@
 const axios = require('axios');
+const dbService = require('./databaseService');
 
 const uptimeHistory = new Map();
 
@@ -41,13 +42,21 @@ async function checkUrlStatus(url) {
 async function updateAllStatuses(urlData, broadcastStatusUpdate) {
   for (const item of urlData) {
     try {
-      const wasOnline = item.status === 'online';
+      const wasOnline = item.currentStatus === 'online';
       const { online: isNowOnline, latency } = await checkUrlStatus(item.url);
-      item.status = isNowOnline ? 'online' : 'offline';
-      item.latency = latency;
-      if (wasOnline !== isNowOnline && broadcastStatusUpdate) {
-        broadcastStatusUpdate(item.url, item.status);
+      const newStatus = isNowOnline ? 'online' : 'offline';
+      
+      item.currentStatus = newStatus;
+      item.currentLatency = latency;
+      
+      if (item._id) {
+        await dbService.updateServerStatus(item._id, newStatus, latency);
       }
+      
+      if (wasOnline !== isNowOnline && broadcastStatusUpdate) {
+        broadcastStatusUpdate(item.url, newStatus);
+      }
+      
       const stats = initializeUptimeHistory(item.url);
       stats.checks++;
       if (isNowOnline) stats.uptime++;
@@ -59,9 +68,9 @@ async function updateAllStatuses(urlData, broadcastStatusUpdate) {
       stats.history.push(isNowOnline ? 1 : 0);
     } catch (error) {
       console.error(`Error checking URL ${item.url}:`, error);
-      item.status = 'error';
+      item.currentStatus = 'error';
       item.uptimeStats = 'Error checking status';
-      item.latency = null;
+      item.currentLatency = null;
     }
   }
 }

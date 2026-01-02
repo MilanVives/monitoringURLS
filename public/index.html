@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Node Deployment URL Status Dashboard</title>
+  <title>UptimeService Status Dashboard</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -127,7 +127,7 @@
 <body>
   <header class="dashboard-header" style="display: flex; align-items: center; gap: 16px;">
     <img src="/img/logo.svg" alt="Logo" style="height: 48px; width: auto; display: block; margin-right: 12px;" />
-    <h1 style="margin: 0;">Node JS Project URL Status Dashboard</h1>
+    <h1 style="margin: 0;">UptimeService Status Dashboard</h1>
   </header>
 
   <div class="stats">
@@ -137,6 +137,7 @@
   </div>
   <button class="refresh-btn" onclick="refreshAll()">Refresh All Statuses</button>
   <button class="refresh-btn" id="reload-csv-btn" onclick="reloadCSV()" style="background-color: #4CAF50; margin-top: 0;">Reload CSV</button>
+  <a href="/admin.html" class="refresh-btn" style="background-color: #FF9800; margin-top: 0; text-align: center; text-decoration: none; display: inline-block;">Admin Panel</a>
   <div class="dashboard" id="dashboard"></div>
 
   <script>
@@ -160,6 +161,13 @@
       data.forEach(item => {
         const tile = document.createElement('div');
         tile.className = `tile ${item.status}${item.grayedOut ? ' grayed-out' : ''}`;
+        tile.style.cursor = 'pointer';
+        tile.onclick = () => {
+          if (!item.grayedOut && item._id) {
+            window.location.href = `/server.html?id=${item._id}`;
+          }
+        };
+        
         let latencyClass = 'latency-unavailable';
         if (typeof item.latency === 'number') {
           if (item.latency <= 300) latencyClass = 'latency-fast';
@@ -170,7 +178,7 @@
   <div class="name">${item.name} ${item.submissionCount ? `(${item.submissionCount})` : ''}</div>
   <div class="submission-time">Submitted ${item.timeSinceSubmission}</div>
   <div class="url">
-    ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer">${item.url}</a>` : 'No URL provided'}
+    ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${item.url}</a>` : 'No URL provided'}
   </div>
   <div class="latency">Latency: ${typeof item.latency === 'number' ? item.latency + ' ms' : '-'}
     <div class="latency-bar ${latencyClass}"></div>
@@ -178,12 +186,12 @@
   <div class="uptime-stats ${item.status === 'error' ? 'error' : ''}">
     ${item.uptimeStats}
   </div>
-  ${item.github ? `<div class="github"><a href="${item.github}" target="_blank">GitHub</a></div>` : ''}
-  ${item.documentation ? `<div class="docs"><a href="${item.documentation}" target="_blank">Docs</a></div>` : ''}
+  ${item.github ? `<div class="github"><a href="${item.github}" target="_blank" onclick="event.stopPropagation()">GitHub</a></div>` : ''}
+  ${item.documentation ? `<div class="docs"><a href="${item.documentation}" target="_blank" onclick="event.stopPropagation()">Docs</a></div>` : ''}
   <div class="status ${item.status}">
     ${item.status === 'online' ? 'Online' : item.status === 'offline' ? 'Offline' : 'Error'}
   </div>
-  ${!item.grayedOut ? `<button onclick="refreshSingle('${item.url}', this)">Refresh</button>` : ''}
+  ${!item.grayedOut ? `<button onclick="event.stopPropagation(); refreshSingle('${item.url}', this)">Refresh</button>` : ''}
 `;
         dashboard.appendChild(tile);
       });
