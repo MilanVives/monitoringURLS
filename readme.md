@@ -72,13 +72,13 @@ node server.js
 
 Create a `.env` file in the project root:
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| MONGODB_URI | mongodb://localhost:27017/monitoring | MongoDB connection string |
-| ADMIN_PASSWORD | admin123 | Password for admin panel |
-| SESSION_SECRET | (random) | Secret for session encryption |
-| PORT | 3000 | Application port |
-| CLOUDFLARE_TUNNEL_TOKEN | (none) | Cloudflare Tunnel token for public access (optional) |
+| Variable                | Default                              | Description                                          |
+| ----------------------- | ------------------------------------ | ---------------------------------------------------- |
+| MONGODB_URI             | mongodb://localhost:27017/monitoring | MongoDB connection string                            |
+| ADMIN_PASSWORD          | admin123                             | Password for admin panel                             |
+| SESSION_SECRET          | (random)                             | Secret for session encryption                        |
+| PORT                    | 3000                                 | Application port                                     |
+| CLOUDFLARE_TUNNEL_TOKEN | (none)                               | Cloudflare Tunnel token for public access (optional) |
 
 ### Cloudflare Tunnel (Optional)
 
@@ -126,11 +126,11 @@ Click any server tile on the dashboard to view:
 
 Place your Node.csv in the project root with these required columns:
 
-| Column | Header                | Description                        |
-|--------|----------------------|------------------------------------|
-| 4      | Naam                 | Student name                       |
-| 11     | Live_Deployment_URL  | URL to monitor                     |
-| 3      | Tijd_van_voltooien   | Submission timestamp (DD-MM-YYYY HH:mm) |
+| Column | Header              | Description                             |
+| ------ | ------------------- | --------------------------------------- |
+| 4      | Naam                | Student name                            |
+| 11     | Live_Deployment_URL | URL to monitor                          |
+| 3      | Tijd_van_voltooien  | Submission timestamp (DD-MM-YYYY HH:mm) |
 
 Example row:
 
@@ -184,6 +184,7 @@ Example row:
 ### Database Schema
 
 **Server Model:**
+
 - `name`: Student name
 - `url`: Deployment URL (indexed)
 - `email`: Student email (indexed)
@@ -209,12 +210,14 @@ Example row:
 ### API Endpoints
 
 **Public Endpoints:**
+
 - `GET /api/urls` - Get all visible servers
 - `GET /api/server/:id` - Get server details with statistics
 - `GET /api/check-url?url=...` - Check single URL status
 - `POST /api/reload-csv` - Reload servers from CSV
 
 **Admin Endpoints (Protected):**
+
 - `POST /api/admin/login` - Authenticate admin
 - `POST /api/admin/logout` - Clear session
 - `GET /api/admin/check-auth` - Check authentication status
@@ -229,13 +232,24 @@ Example row:
 
 Environment variables (set in .env or compose.yaml):
 
-| Variable        | Default | Description                        |
-|----------------|---------|------------------------------------|
-| MONGODB_URI    | mongodb://localhost:27017/monitoring | MongoDB connection string |
-| ADMIN_PASSWORD | admin123 | Admin panel password |
-| SESSION_SECRET | (random) | Session encryption secret |
-| PORT           | 3000    | Application port                   |
-| CHECK_INTERVAL | 300000  | Status check interval in ms (5 min) |
+| Variable       | Default                              | Description                         |
+| -------------- | ------------------------------------ | ----------------------------------- |
+| MONGODB_URI    | mongodb://localhost:27017/monitoring | MongoDB connection string           |
+| ADMIN_PASSWORD | admin123                             | Admin panel password                |
+| SESSION_SECRET | (random)                             | Session encryption secret           |
+| PORT           | 3000                                 | Application port                    |
+| CHECK_INTERVAL | 300000                               | Status check interval in ms (5 min) |
+
+## Build
+
+Every time you push to main, GitHub automatically builds a new image.
+
+On production server:
+
+     cd ~/monitoringurls
+     git pull && docker compose -f compose.prod.yaml pull && docker compose -f compose.prod.yaml up
+
+-d
 
 ## Logo
 
@@ -244,7 +258,7 @@ The dashboard logo is located at `public/img/logo.svg` and appears in the top le
 ## Troubleshooting
 
 | Symptom                | Solution                                      |
-|------------------------|-----------------------------------------------|
+| ---------------------- | --------------------------------------------- |
 | Dashboard not loading  | Check Docker logs: `docker compose logs -f`   |
 | CSV data not appearing | Verify file permissions: `chmod 644 Node.csv` |
 | WebSocket disconnects  | Automatic reconnection every 5 seconds        |
