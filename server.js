@@ -175,6 +175,20 @@ app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
     const { initializeUptimeHistory } = require('./services/uptimeService');
     initializeUptimeHistory(url);
     
+    // Add to urlData array so monitoring picks it up
+    urlData.push(server);
+    console.log(`[MANUAL ADD] Added server ${name} to monitoring. Total servers: ${urlData.length}`);
+    
+    // Run immediate status check for new server
+    const { online, latency } = await checkUrlStatus(url);
+    server.currentStatus = online ? 'online' : 'offline';
+    server.currentLatency = latency;
+    await dbService.addStatusCheck(server._id.toString(), online ? 'online' : 'offline', latency);
+    console.log(`[MANUAL ADD] Initial status check: ${server.currentStatus}`);
+    
+    // Broadcast to WebSocket clients
+    broadcastStatusUpdate(wss, url, { status: server.currentStatus, latency });
+    
     res.json({ success: true, server });
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -183,7 +197,15 @@ app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
 
 app.delete('/api/admin/servers/:id', requireAuth, async (req, res) => {
   try {
+    const server = await dbService.getServerById(req.params.id);
     await dbService.deleteServer(req.params.id);
+    
+    // Remove from urlData array
+    if (server) {
+      urlData = urlData.filter(s => s._id.toString() !== req.params.id);
+      console.log(`[DELETE] Removed server ${server.name} from monitoring. Total servers: ${urlData.length}`);
+    }
+    
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

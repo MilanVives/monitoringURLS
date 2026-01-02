@@ -147,6 +147,10 @@ async function getAllServers() {
   return await Server.find().sort({ createdAt: -1 });
 }
 
+async function getServerById(serverId) {
+  return await Server.findById(serverId);
+}
+
 async function getServerWithHistory(serverId) {
   return await Server.findById(serverId);
 }
@@ -221,6 +225,7 @@ module.exports = {
   updateServerStatus,
   getVisibleServers,
   getAllServers,
+  getServerById,
   getServerWithHistory,
   hideServer,
   unhideServer,
