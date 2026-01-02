@@ -18,6 +18,7 @@ const serverSchema = new mongoose.Schema({
   currentLatency: Number,
   statusHistory: [statusCheckSchema],
   hidden: { type: Boolean, default: false },
+  manuallyAdded: { type: Boolean, default: false },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

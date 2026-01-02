@@ -101,10 +101,12 @@ async function syncServersFromCSV(csvData) {
   }
   
   // Clean up: Remove any servers with emails that are no longer in the latest CSV data
+  // BUT: Don't delete manually added servers
   const latestEmails = latestEntries.filter(e => e.email).map(e => e.email);
   if (latestEmails.length > 0) {
     const serversToRemove = await Server.find({
-      email: { $exists: true, $ne: null, $nin: latestEmails }
+      email: { $exists: true, $ne: null, $nin: latestEmails },
+      manuallyAdded: { $ne: true }  // Don't delete manually added servers
     });
     
     for (const oldServer of serversToRemove) {

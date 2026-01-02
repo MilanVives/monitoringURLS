@@ -166,7 +166,8 @@ app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
       comments,
       submissionTime: submissionTime || new Date().toISOString(),
       currentStatus: 'unknown',
-      hidden: false
+      hidden: false,
+      manuallyAdded: true
     });
     
     await server.save();

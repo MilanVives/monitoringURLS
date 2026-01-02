@@ -50,7 +50,7 @@ async function updateAllStatuses(urlData, broadcastStatusUpdate) {
       item.currentLatency = latency;
       
       if (item._id) {
-        await dbService.updateServerStatus(item._id, newStatus, latency);
+        await dbService.updateServerStatus(item._id.toString(), newStatus, latency);
       }
       
       if (wasOnline !== isNowOnline && broadcastStatusUpdate) {
@@ -67,10 +67,19 @@ async function updateAllStatuses(urlData, broadcastStatusUpdate) {
       stats.history.shift();
       stats.history.push(isNowOnline ? 1 : 0);
     } catch (error) {
-      console.error(`Error checking URL ${item.url}:`, error);
+      console.error(`Error checking URL ${item.url}:`, error.message);
       item.currentStatus = 'error';
       item.uptimeStats = 'Error checking status';
       item.currentLatency = null;
+      
+      // Try to update database even on error
+      if (item._id) {
+        try {
+          await dbService.updateServerStatus(item._id.toString(), 'error', null);
+        } catch (dbError) {
+          console.error(`Failed to update error status in DB:`, dbError.message);
+        }
+      }
     }
   }
 }
