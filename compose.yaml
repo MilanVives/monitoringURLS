@@ -29,7 +29,6 @@ services:
       - ./public:/usr/src/app/public
       - ./img:/usr/src/app/img
       - ./uploads:/usr/src/app/uploads
-      - csv_data:/usr/src/app/Node.csv
     restart: unless-stopped
     environment:
       - NODE_ENV=production
@@ -57,4 +56,3 @@ services:
 
 volumes:
   mongodb_data:
-  csv_data:
