@@ -1,12 +1,14 @@
-# CSV Import Logic - Duplicate Prevention & Update Handling
+# CSV Import Logic - Duplicate Prevention & Accumulation
 
 ## Overview
 
 The CSV import system now intelligently handles duplicate entries and updates, ensuring:
-- ✅ Only the latest submission per email address is imported
+- ✅ Only the latest submission per email address is imported from each CSV
 - ✅ No duplicate servers in the database
 - ✅ Updates to existing submissions are properly handled
 - ✅ URL changes are tracked and history is reset appropriately
+- ✅ **Multiple CSVs can be uploaded - servers accumulate**
+- ✅ **No servers are deleted when uploading new CSVs**
 
 ## How It Works
 
@@ -55,11 +57,12 @@ If neither email nor URL exists:
   → Create new server entry
 ```
 
-#### Step 4: Cleanup Old Servers
+#### Step 4: No Automatic Cleanup
 ```
 After import:
-  → Find servers with emails NOT in current CSV
-  → Remove those servers (they were removed or replaced)
+  → Servers from previous CSVs remain in database
+  → Only duplicate emails are updated, not deleted
+  → All servers accumulate across CSV uploads
 ```
 
 ## Behavior Examples

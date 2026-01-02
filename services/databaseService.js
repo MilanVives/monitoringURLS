@@ -100,22 +100,12 @@ async function syncServersFromCSV(csvData) {
     syncedServers.push(server);
   }
   
-  // Clean up: Remove any servers with emails that are no longer in the latest CSV data
-  // BUT: Don't delete manually added servers
-  const latestEmails = latestEntries.filter(e => e.email).map(e => e.email);
-  if (latestEmails.length > 0) {
-    const serversToRemove = await Server.find({
-      email: { $exists: true, $ne: null, $nin: latestEmails },
-      manuallyAdded: { $ne: true }  // Don't delete manually added servers
-    });
-    
-    for (const oldServer of serversToRemove) {
-      console.log(`Removing old server for ${oldServer.email}: ${oldServer.url}`);
-      await Server.deleteOne({ _id: oldServer._id });
-    }
-  }
+  // Clean up: Only remove duplicate servers with same email
+  // Do NOT delete servers that aren't in current CSV - allow accumulation from multiple CSVs
+  console.log(`CSV sync complete. Total servers synced: ${syncedServers.length}`);
   
   return syncedServers;
+}
 }
 
 async function updateServerStatus(serverId, status, latency) {
