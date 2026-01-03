@@ -447,11 +447,16 @@ app.get('/api/admin/access-logs/stats', requireAuth, async (req, res) => {
     const [
       totalToday,
       uniqueIPs,
+      uniqueUsers,
       topPaths,
       recentLogs
     ] = await Promise.all([
       AccessLog.countDocuments({ timestamp: { $gte: last24h } }),
       AccessLog.distinct('ip', { timestamp: { $gte: last24h } }),
+      AccessLog.distinct('cloudflareEmail', { 
+        timestamp: { $gte: last24h },
+        cloudflareEmail: { $ne: null, $exists: true }
+      }),
       AccessLog.aggregate([
         { $match: { timestamp: { $gte: last24h } } },
         { $group: { _id: '$path', count: { $sum: 1 } } },
@@ -466,6 +471,7 @@ app.get('/api/admin/access-logs/stats', requireAuth, async (req, res) => {
     res.json({
       totalToday,
       uniqueIPsToday: uniqueIPs.length,
+      uniqueUsers: uniqueUsers.length,
       topPaths,
       recentLogs
     });

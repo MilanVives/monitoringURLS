@@ -288,7 +288,7 @@
           <button class="btn btn-primary" onclick="loadAccessLogs()">Refresh Logs</button>
           <button class="btn btn-danger" onclick="confirmClearAccessLogs()">Clear All Logs</button>
         </div>
-        <div id="access-stats" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px;">
+        <div id="access-stats" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
           <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
             <div style="font-size: 24px; font-weight: bold; color: #2196F3;" id="total-visits">0</div>
             <div style="color: #666;">Total Visits</div>
@@ -296,6 +296,10 @@
           <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
             <div style="font-size: 24px; font-weight: bold; color: #4CAF50;" id="unique-ips">0</div>
             <div style="color: #666;">Unique IPs</div>
+          </div>
+          <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
+            <div style="font-size: 24px; font-weight: bold; color: #9C27B0;" id="unique-users">0</div>
+            <div style="color: #666;">Unique Users</div>
           </div>
           <div style="padding: 15px; background: #f9f9f9; border-radius: 4px; text-align: center;">
             <div style="font-size: 24px; font-weight: bold; color: #FF9800;" id="admin-visits">0</div>
@@ -837,6 +841,7 @@
         // Update stats
         document.getElementById('total-visits').textContent = stats.totalToday;
         document.getElementById('unique-ips').textContent = stats.uniqueIPsToday;
+        document.getElementById('unique-users').textContent = stats.uniqueUsers || 0;
         
         const adminVisits = stats.topPaths.find(p => p._id.includes('/admin'))?.count || 0;
         document.getElementById('admin-visits').textContent = adminVisits;
@@ -851,6 +856,7 @@
         let html = '<table style="width: 100%; border-collapse: collapse; font-size: 13px;">';
         html += '<thead><tr style="background: #f5f5f5;">';
         html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Time</th>';
+        html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">User Email</th>';
         html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">IP Address</th>';
         html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Path</th>';
         html += '<th style="padding: 8px; border: 1px solid #ddd; text-align: left;">User Agent</th>';
@@ -860,8 +866,10 @@
           const time = new Date(log.timestamp).toLocaleString();
           const pathColor = log.path.includes('/admin') ? '#FF9800' : 
                            log.path.includes('/server') ? '#2196F3' : '#666';
+          const userEmail = log.cloudflareEmail || '<span style="color: #999;">N/A</span>';
           html += '<tr>';
           html += `<td style="padding: 8px; border: 1px solid #ddd;">${time}</td>`;
+          html += `<td style="padding: 8px; border: 1px solid #ddd; font-weight: bold; color: #2196F3;">${userEmail}</td>`;
           html += `<td style="padding: 8px; border: 1px solid #ddd; font-family: monospace;">${log.ip}</td>`;
           html += `<td style="padding: 8px; border: 1px solid #ddd; color: ${pathColor}; font-weight: bold;">${log.path}</td>`;
           html += `<td style="padding: 8px; border: 1px solid #ddd; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${log.userAgent || 'Unknown'}</td>`;

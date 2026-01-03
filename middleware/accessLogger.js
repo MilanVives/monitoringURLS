@@ -9,18 +9,24 @@ async function logAccess(req, res, next) {
                req.socket.remoteAddress || 
                req.ip;
     
+    // Get Cloudflare Access user email from headers
+    // Cloudflare Access passes this in 'cf-access-authenticated-user-email' header
+    const cloudflareEmail = req.headers['cf-access-authenticated-user-email'] || null;
+    
     const accessLog = new AccessLog({
       ip: ip,
       path: req.path,
       method: req.method,
       userAgent: req.headers['user-agent'] || 'Unknown',
+      cloudflareEmail: cloudflareEmail,
       timestamp: new Date()
     });
     
     await accessLog.save();
     
     // Log to console as well
-    console.log(`[ACCESS] ${ip} - ${req.method} ${req.path} - ${req.headers['user-agent']?.substring(0, 50) || 'Unknown'}`);
+    const userInfo = cloudflareEmail ? ` [User: ${cloudflareEmail}]` : '';
+    console.log(`[ACCESS] ${ip}${userInfo} - ${req.method} ${req.path} - ${req.headers['user-agent']?.substring(0, 50) || 'Unknown'}`);
   } catch (error) {
     // Don't fail the request if logging fails
     console.error('Error logging access:', error.message);
