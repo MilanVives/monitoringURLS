@@ -25,11 +25,29 @@ async function checkUrlStatus(url) {
     } catch (e) {
       return { online: false, latency: null };
     }
+    
     const start = Date.now();
-    const response = await axios.head(url, {
+    
+    // Try HEAD first (more efficient)
+    let response = await axios.head(url, {
       timeout: 5000,
       validateStatus: () => true
     });
+    
+    // If HEAD returns 403, 405, or other client error, try GET instead
+    // Some APIs/backends block HEAD requests for security reasons
+    if (response.status === 403 || response.status === 405 || response.status === 401) {
+      const getStart = Date.now();
+      response = await axios.get(url, {
+        timeout: 5000,
+        validateStatus: () => true,
+        maxRedirects: 5
+      });
+      const latency = Date.now() - getStart;
+      const online = response.status >= 200 && response.status < 400;
+      return { online, latency: online ? latency : null };
+    }
+    
     const latency = Date.now() - start;
     const online = response.status >= 200 && response.status < 400;
     return { online, latency: online ? latency : null };
