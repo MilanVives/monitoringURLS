@@ -66,7 +66,7 @@ app.get('/api/urls', async (req, res) => {
         timeSinceSubmission: timeDiff ? `${timeDiff.days} days and ${timeDiff.hours} hours ago` : 'N/A',
         uptimeStats: `${uptimePercent}% uptime (last ${totalChecks} checks)`,
         grayedOut: false,
-        submissionCount: 1
+        submissionCount: server.editCount || 0
       };
     });
     res.json(urlData);

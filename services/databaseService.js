@@ -11,6 +11,17 @@ async function syncServersFromCSV(csvData) {
   for (const data of latestEntries) {
     const { name, url, email, github, documentation, submissionTime, comments } = data;
     
+    // Create a hash of the data to detect changes
+    const csvDataHash = JSON.stringify({
+      name,
+      url,
+      email,
+      github,
+      documentation,
+      submissionTime,
+      comments
+    });
+    
     let server;
     
     // First, try to find existing server by email
@@ -18,6 +29,9 @@ async function syncServersFromCSV(csvData) {
       server = await Server.findOne({ email });
       
       if (server) {
+        // Check if data has changed
+        const dataChanged = server.lastCsvData !== csvDataHash;
+        
         // Update existing server for this email
         // If URL changed, update it
         const urlChanged = server.url !== url;
@@ -29,6 +43,13 @@ async function syncServersFromCSV(csvData) {
         server.submissionTime = submissionTime;
         server.comments = comments;
         server.updatedAt = new Date();
+        
+        // Increment edit count only if data actually changed
+        if (dataChanged) {
+          server.editCount = (server.editCount || 0) + 1;
+          server.lastCsvData = csvDataHash;
+          console.log(`Data changed for ${email}: Edit count now ${server.editCount}`);
+        }
         
         if (urlChanged) {
           // Reset status history if URL changed
@@ -45,6 +66,8 @@ async function syncServersFromCSV(csvData) {
         
         if (serverByUrl) {
           // Update existing server found by URL
+          const dataChanged = serverByUrl.lastCsvData !== csvDataHash;
+          
           serverByUrl.name = name;
           serverByUrl.email = email;
           serverByUrl.github = github;
@@ -52,6 +75,12 @@ async function syncServersFromCSV(csvData) {
           serverByUrl.submissionTime = submissionTime;
           serverByUrl.comments = comments;
           serverByUrl.updatedAt = new Date();
+          
+          if (dataChanged) {
+            serverByUrl.editCount = (serverByUrl.editCount || 0) + 1;
+            serverByUrl.lastCsvData = csvDataHash;
+          }
+          
           await serverByUrl.save();
           server = serverByUrl;
         } else {
@@ -64,7 +93,9 @@ async function syncServersFromCSV(csvData) {
             documentation,
             submissionTime,
             comments,
-            currentStatus: 'unknown'
+            currentStatus: 'unknown',
+            editCount: 0,
+            lastCsvData: csvDataHash
           });
           await server.save();
         }
@@ -74,6 +105,8 @@ async function syncServersFromCSV(csvData) {
       server = await Server.findOne({ url });
       
       if (server) {
+        const dataChanged = server.lastCsvData !== csvDataHash;
+        
         server.name = name;
         server.email = email;
         server.github = github;
@@ -81,6 +114,12 @@ async function syncServersFromCSV(csvData) {
         server.submissionTime = submissionTime;
         server.comments = comments;
         server.updatedAt = new Date();
+        
+        if (dataChanged) {
+          server.editCount = (server.editCount || 0) + 1;
+          server.lastCsvData = csvDataHash;
+        }
+        
         await server.save();
       } else {
         server = new Server({
@@ -91,7 +130,9 @@ async function syncServersFromCSV(csvData) {
           documentation,
           submissionTime,
           comments,
-          currentStatus: 'unknown'
+          currentStatus: 'unknown',
+          editCount: 0,
+          lastCsvData: csvDataHash
         });
         await server.save();
       }

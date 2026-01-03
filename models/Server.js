@@ -19,6 +19,8 @@ const serverSchema = new mongoose.Schema({
   statusHistory: [statusCheckSchema],
   hidden: { type: Boolean, default: false },
   manuallyAdded: { type: Boolean, default: false },
+  editCount: { type: Number, default: 0 },
+  lastCsvData: { type: String },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
