@@ -173,7 +173,7 @@
           else latencyClass = 'latency-slow';
         }
         tile.innerHTML = `
-  <div class="name">${item.name} ${item.submissionCount ? `(${item.submissionCount})` : ''}</div>
+  <div class="name">${item.name} ${typeof item.submissionCount === 'number' ? `(${item.submissionCount})` : ''}</div>
   <div class="submission-time">Submitted ${item.timeSinceSubmission}</div>
   <div class="url">
     ${item.url ? `<a href="${item.url}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">${item.url}</a>` : 'No URL provided'}
