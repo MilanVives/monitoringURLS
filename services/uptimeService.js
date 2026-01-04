@@ -44,13 +44,33 @@ async function checkUrlStatus(url) {
         maxRedirects: 5
       });
       const latency = Date.now() - getStart;
-      const online = response.status >= 200 && response.status < 400;
-      return { online, latency: online ? latency : null };
+      
+      // Check status codes more carefully
+      if (response.status >= 200 && response.status < 400) {
+        return { online: true, latency };
+      } else if (response.status >= 500) {
+        // Server error (500, 502, 503, etc.) - server responded but with error
+        console.log(`Server error for ${url}: ${response.status}`);
+        return { online: false, latency: null };
+      } else {
+        // Client error (400, 404, etc.)
+        return { online: false, latency: null };
+      }
     }
     
     const latency = Date.now() - start;
-    const online = response.status >= 200 && response.status < 400;
-    return { online, latency: online ? latency : null };
+    
+    // Check status codes more carefully for HEAD response too
+    if (response.status >= 200 && response.status < 400) {
+      return { online: true, latency };
+    } else if (response.status >= 500) {
+      // Server error (500, 502, 503, etc.)
+      console.log(`Server error for ${url}: ${response.status}`);
+      return { online: false, latency: null };
+    } else {
+      // Client error (400, 404, etc.)
+      return { online: false, latency: null };
+    }
   } catch (error) {
     console.error(`Error checking URL ${url}:`, error.message);
     return { online: false, latency: null };
