@@ -16,14 +16,14 @@ function initializeUptimeHistory(url) {
 
 async function checkUrlStatus(url) {
   try {
-    if (!url) return { online: false, latency: null };
+    if (!url) return { online: false, latency: null, status: 'offline' };
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
       url = 'http://' + url;
     }
     try {
       new URL(url);
     } catch (e) {
-      return { online: false, latency: null };
+      return { online: false, latency: null, status: 'offline' };
     }
     
     const start = Date.now();
@@ -47,14 +47,14 @@ async function checkUrlStatus(url) {
       
       // Check status codes more carefully
       if (response.status >= 200 && response.status < 400) {
-        return { online: true, latency };
+        return { online: true, latency, status: 'online' };
       } else if (response.status >= 500) {
         // Server error (500, 502, 503, etc.) - server responded but with error
         console.log(`Server error for ${url}: ${response.status}`);
-        return { online: false, latency: null };
+        return { online: false, latency, status: 'degraded', statusCode: response.status };
       } else {
         // Client error (400, 404, etc.)
-        return { online: false, latency: null };
+        return { online: false, latency: null, status: 'offline' };
       }
     }
     
@@ -62,36 +62,37 @@ async function checkUrlStatus(url) {
     
     // Check status codes more carefully for HEAD response too
     if (response.status >= 200 && response.status < 400) {
-      return { online: true, latency };
+      return { online: true, latency, status: 'online' };
     } else if (response.status >= 500) {
       // Server error (500, 502, 503, etc.)
       console.log(`Server error for ${url}: ${response.status}`);
-      return { online: false, latency: null };
+      return { online: false, latency, status: 'degraded', statusCode: response.status };
     } else {
       // Client error (400, 404, etc.)
-      return { online: false, latency: null };
+      return { online: false, latency: null, status: 'offline' };
     }
   } catch (error) {
     console.error(`Error checking URL ${url}:`, error.message);
-    return { online: false, latency: null };
+    return { online: false, latency: null, status: 'offline' };
   }
 }
 
 async function updateAllStatuses(urlData, broadcastStatusUpdate) {
   for (const item of urlData) {
     try {
-      const wasOnline = item.currentStatus === 'online';
-      const { online: isNowOnline, latency } = await checkUrlStatus(item.url);
-      const newStatus = isNowOnline ? 'online' : 'offline';
+      const wasStatus = item.currentStatus;
+      const { online: isNowOnline, latency, status, statusCode } = await checkUrlStatus(item.url);
+      const newStatus = status || (isNowOnline ? 'online' : 'offline');
       
       item.currentStatus = newStatus;
       item.currentLatency = latency;
+      if (statusCode) item.statusCode = statusCode;
       
       if (item._id) {
         await dbService.updateServerStatus(item._id.toString(), newStatus, latency);
       }
       
-      if (wasOnline !== isNowOnline && broadcastStatusUpdate) {
+      if (wasStatus !== newStatus && broadcastStatusUpdate) {
         broadcastStatusUpdate(item.url, newStatus);
       }
       

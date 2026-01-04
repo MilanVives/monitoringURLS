@@ -44,6 +44,10 @@
       border-left: 5px solid #F44336;
     }
     
+    .tile.degraded {
+      border-left: 5px solid #FF9800;
+    }
+    
     .tile.unknown {
       border-left: 5px solid #FFC107;
     }
@@ -76,6 +80,11 @@
     .status.offline {
       background-color: #FFEBEE;
       color: #F44336;
+    }
+    
+    .status.degraded {
+      background-color: #FFF3E0;
+      color: #FF9800;
     }
     
     .status.unknown {
@@ -187,7 +196,7 @@
   ${item.github ? `<div class="github"><a href="${item.github}" target="_blank" onclick="event.stopPropagation()">GitHub</a></div>` : ''}
   ${item.documentation ? `<div class="docs"><a href="${item.documentation}" target="_blank" onclick="event.stopPropagation()">Docs</a></div>` : ''}
   <div class="status ${item.status}">
-    ${item.status === 'online' ? 'Online' : item.status === 'offline' ? 'Offline' : 'Error'}
+    ${item.status === 'online' ? 'Online' : item.status === 'offline' ? 'Offline' : item.status === 'degraded' ? `Degraded${item.statusCode ? ' (' + item.statusCode + ')' : ''}` : 'Error'}
   </div>
   ${!item.grayedOut ? `<button onclick="event.stopPropagation(); refreshSingle('${item.url}', this)">Refresh</button>` : ''}
 `;

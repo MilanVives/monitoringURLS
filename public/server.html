@@ -83,6 +83,11 @@
       color: #F44336;
     }
     
+    .status-badge.degraded {
+      background-color: #FFF3E0;
+      color: #FF9800;
+    }
+    
     .status-badge.unknown {
       background-color: #FFF8E1;
       color: #FFA000;
@@ -320,7 +325,10 @@
       urlLink.textContent = server.url;
       
       const statusBadge = document.getElementById('server-status');
-      statusBadge.textContent = server.currentStatus;
+      const statusText = server.currentStatus === 'degraded' 
+        ? `degraded (${server.statusCode || 'Server Error'})` 
+        : server.currentStatus;
+      statusBadge.textContent = statusText;
       statusBadge.className = `status-badge ${server.currentStatus}`;
       
       document.getElementById('server-latency').textContent = 

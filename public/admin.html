@@ -546,12 +546,15 @@
       }
     }
     
+    let serversData = [];
+    
     async function loadServers() {
       try {
         const response = await fetch('/api/admin/servers', {
           credentials: 'same-origin'
         });
         const servers = await response.json();
+        serversData = servers;
         renderServers(servers);
       } catch (error) {
         console.error('Error loading servers:', error);
@@ -623,6 +626,7 @@
         const response = await fetch(`/api/admin/servers/${id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
           body: JSON.stringify(data)
         });
         
