@@ -50,10 +50,11 @@ async function checkUrlStatus(url) {
         return { online: true, latency, status: 'online' };
       } else if (response.status >= 500) {
         // Server error (500, 502, 503, etc.) - server responded but with error
-        console.log(`Server error for ${url}: ${response.status}`);
+        console.log(`[DEGRADED] ${url} returned status ${response.status} after GET fallback, latency ${latency}ms`);
         return { online: false, latency, status: 'degraded', statusCode: response.status };
       } else {
         // Client error (400, 404, etc.)
+        console.log(`[OFFLINE] ${url} returned client error status ${response.status} after GET fallback`);
         return { online: false, latency: null, status: 'offline' };
       }
     }
@@ -65,10 +66,11 @@ async function checkUrlStatus(url) {
       return { online: true, latency, status: 'online' };
     } else if (response.status >= 500) {
       // Server error (500, 502, 503, etc.)
-      console.log(`Server error for ${url}: ${response.status}`);
+      console.log(`[DEGRADED] ${url} returned status ${response.status} with latency ${latency}ms`);
       return { online: false, latency, status: 'degraded', statusCode: response.status };
     } else {
       // Client error (400, 404, etc.)
+      console.log(`[OFFLINE] ${url} returned client error status ${response.status}`);
       return { online: false, latency: null, status: 'offline' };
     }
   } catch (error) {
