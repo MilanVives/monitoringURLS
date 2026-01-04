@@ -307,6 +307,52 @@
           </div>
         </div>
         <div id="access-logs-container" style="max-height: 400px; overflow-y: auto;">Loading...</div>
+        
+        <!-- Unique IPs and Users Tables -->
+        <div style="margin-top: 40px;">
+          <h3>Unique Visitors</h3>
+          <div style="margin-bottom: 15px;">
+            <button class="btn btn-primary" onclick="loadUniqueVisitors()">Refresh</button>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+            <div>
+              <h4 style="margin-bottom: 10px;">Unique IP Addresses</h4>
+              <div id="unique-ips-table" style="max-height: 400px; overflow-y: auto; background: #f9f9f9; border-radius: 4px; padding: 10px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #333; color: white;">
+                      <th style="padding: 8px; text-align: left;">IP Address</th>
+                      <th style="padding: 8px; text-align: center;">Visits</th>
+                      <th style="padding: 8px; text-align: left;">Last Access</th>
+                    </tr>
+                  </thead>
+                  <tbody id="unique-ips-tbody">
+                    <tr><td colspan="3" style="padding: 20px; text-align: center;">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <div>
+              <h4 style="margin-bottom: 10px;">Authenticated Users</h4>
+              <div id="unique-users-table" style="max-height: 400px; overflow-y: auto; background: #f9f9f9; border-radius: 4px; padding: 10px;">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="background: #333; color: white;">
+                      <th style="padding: 8px; text-align: left;">Email</th>
+                      <th style="padding: 8px; text-align: center;">Visits</th>
+                      <th style="padding: 8px; text-align: left;">Last Access</th>
+                    </tr>
+                  </thead>
+                  <tbody id="unique-users-tbody">
+                    <tr><td colspan="3" style="padding: 20px; text-align: center;">Loading...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -451,6 +497,7 @@
       authenticated = true;
       loadServers();
       loadAccessLogs();
+      loadUniqueVisitors();
     }
     
     document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -535,6 +582,7 @@
             </div>
           </div>
           <div class="server-actions">
+            <button class="btn btn-primary" onclick="editServer('${server._id}')">Edit</button>
             ${server.hidden 
               ? `<button class="btn btn-success" onclick="unhideServer('${server._id}')">Unhide</button>`
               : `<button class="btn btn-warning" onclick="hideServer('${server._id}')">Hide</button>`
@@ -543,6 +591,48 @@
           </div>
         </div>
       `).join('');
+    }
+    
+    function editServer(id) {
+      const server = serversData.find(s => s._id === id);
+      if (!server) return;
+      
+      const name = prompt('Name:', server.name);
+      if (name === null) return;
+      
+      const url = prompt('URL:', server.url);
+      if (url === null) return;
+      
+      const email = prompt('Email:', server.email || '');
+      if (email === null) return;
+      
+      const github = prompt('GitHub:', server.github || '');
+      if (github === null) return;
+      
+      const documentation = prompt('Documentation:', server.documentation || '');
+      if (documentation === null) return;
+      
+      const comments = prompt('Comments:', server.comments || '');
+      if (comments === null) return;
+      
+      updateServer(id, { name, url, email, github, documentation, comments });
+    }
+    
+    async function updateServer(id, data) {
+      try {
+        const response = await fetch(`/api/admin/servers/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (!response.ok) throw new Error('Failed to update server');
+        
+        alert('Server updated successfully!');
+        await loadServers();
+      } catch (error) {
+        alert('Error updating server: ' + error.message);
+      }
     }
     
     async function hideServer(id) {
@@ -909,6 +999,45 @@
         }
       } catch (error) {
         alert('Error clearing logs: ' + error.message);
+      }
+    }
+    
+    async function loadUniqueVisitors() {
+      try {
+        const response = await fetch('/api/admin/access-logs/unique', { credentials: 'same-origin' });
+        const data = await response.json();
+        
+        // Render unique IPs
+        const ipsTbody = document.getElementById('unique-ips-tbody');
+        if (data.ips.length === 0) {
+          ipsTbody.innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center;">No data</td></tr>';
+        } else {
+          ipsTbody.innerHTML = data.ips.map(item => `
+            <tr style="border-bottom: 1px solid #ddd;">
+              <td style="padding: 8px;">${item.ip}</td>
+              <td style="padding: 8px; text-align: center;">${item.accessCount}</td>
+              <td style="padding: 8px;">${new Date(item.lastAccess).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+        
+        // Render unique users
+        const usersTbody = document.getElementById('unique-users-tbody');
+        if (data.users.length === 0) {
+          usersTbody.innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center;">No authenticated users yet</td></tr>';
+        } else {
+          usersTbody.innerHTML = data.users.map(item => `
+            <tr style="border-bottom: 1px solid #ddd;">
+              <td style="padding: 8px;">${item.email}</td>
+              <td style="padding: 8px; text-align: center;">${item.accessCount}</td>
+              <td style="padding: 8px;">${new Date(item.lastAccess).toLocaleString()}</td>
+            </tr>
+          `).join('');
+        }
+      } catch (error) {
+        console.error('Error loading unique visitors:', error);
+        document.getElementById('unique-ips-tbody').innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center; color: red;">Error loading data</td></tr>';
+        document.getElementById('unique-users-tbody').innerHTML = '<tr><td colspan="3" style="padding: 20px; text-align: center; color: red;">Error loading data</td></tr>';
       }
     }
     

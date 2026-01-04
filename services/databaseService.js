@@ -199,6 +199,14 @@ async function deleteServer(serverId) {
   return await Server.findByIdAndDelete(serverId);
 }
 
+async function updateServer(serverId, updates) {
+  return await Server.findByIdAndUpdate(
+    serverId,
+    { $set: updates },
+    { new: true }
+  );
+}
+
 async function clearAllServers() {
   return await Server.deleteMany({});
 }
@@ -262,6 +270,7 @@ module.exports = {
   hideServer,
   unhideServer,
   deleteServer,
+  updateServer,
   clearAllServers,
   getServerStatistics
 };

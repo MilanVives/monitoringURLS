@@ -213,6 +213,41 @@ app.delete('/api/admin/servers/:id', requireAuth, async (req, res) => {
   }
 });
 
+app.put('/api/admin/servers/:id', requireAuth, async (req, res) => {
+  try {
+    const { name, url, email, github, documentation, comments } = req.body;
+    
+    // Update in database
+    await dbService.updateServer(req.params.id, {
+      name,
+      url,
+      email,
+      github,
+      documentation,
+      comments
+    });
+    
+    // Update in urlData array
+    const index = urlData.findIndex(s => s._id.toString() === req.params.id);
+    if (index !== -1) {
+      urlData[index] = {
+        ...urlData[index],
+        name,
+        url,
+        email,
+        github,
+        documentation,
+        comments
+      };
+      console.log(`[UPDATE] Updated server ${name}. Total servers: ${urlData.length}`);
+    }
+    
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/admin/clear-database', requireAuth, async (req, res) => {
   try {
     await dbService.clearAllServers();
@@ -485,6 +520,75 @@ app.delete('/api/admin/access-logs/clear', requireAuth, async (req, res) => {
     const AccessLog = require('./models/AccessLog');
     const result = await AccessLog.deleteMany({});
     res.json({ success: true, deletedCount: result.deletedCount });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get unique IPs and users with last access timestamp
+app.get('/api/admin/access-logs/unique', requireAuth, async (req, res) => {
+  try {
+    const AccessLog = require('./models/AccessLog');
+    
+    // Get unique IPs with their last access time
+    const uniqueIPs = await AccessLog.aggregate([
+      {
+        $sort: { timestamp: -1 }
+      },
+      {
+        $group: {
+          _id: '$ip',
+          lastAccess: { $first: '$timestamp' },
+          accessCount: { $sum: 1 }
+        }
+      },
+      {
+        $sort: { lastAccess: -1 }
+      },
+      {
+        $limit: 100
+      }
+    ]);
+    
+    // Get unique authenticated users with their last access time
+    const uniqueUsers = await AccessLog.aggregate([
+      {
+        $match: {
+          cloudflareEmail: { $ne: null, $exists: true }
+        }
+      },
+      {
+        $sort: { timestamp: -1 }
+      },
+      {
+        $group: {
+          _id: '$cloudflareEmail',
+          lastAccess: { $first: '$timestamp' },
+          accessCount: { $sum: 1 },
+          lastIP: { $first: '$ip' }
+        }
+      },
+      {
+        $sort: { lastAccess: -1 }
+      },
+      {
+        $limit: 100
+      }
+    ]);
+    
+    res.json({
+      ips: uniqueIPs.map(item => ({
+        ip: item._id,
+        lastAccess: item.lastAccess,
+        accessCount: item.accessCount
+      })),
+      users: uniqueUsers.map(item => ({
+        email: item._id,
+        lastAccess: item.lastAccess,
+        accessCount: item.accessCount,
+        lastIP: item.lastIP
+      }))
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
