@@ -1,7 +1,7 @@
 const Server = require('../models/Server');
 const { getTimeDifference } = require('../utils/dateUtils');
 
-async function syncServersFromCSV(csvData) {
+async function syncServersFromCSV(csvData, programId) {
   const syncedServers = [];
   
   // Filter out grayed-out entries (only keep latest per email)
@@ -43,6 +43,7 @@ async function syncServersFromCSV(csvData) {
         server.submissionTime = submissionTime;
         server.comments = comments;
         server.updatedAt = new Date();
+        if (programId) server.program = programId;
         
         // Increment edit count only if data actually changed
         if (dataChanged) {
@@ -75,6 +76,7 @@ async function syncServersFromCSV(csvData) {
           serverByUrl.submissionTime = submissionTime;
           serverByUrl.comments = comments;
           serverByUrl.updatedAt = new Date();
+          if (programId) serverByUrl.program = programId;
           
           if (dataChanged) {
             serverByUrl.editCount = (serverByUrl.editCount || 0) + 1;
@@ -95,7 +97,8 @@ async function syncServersFromCSV(csvData) {
             comments,
             currentStatus: 'unknown',
             editCount: 0,
-            lastCsvData: csvDataHash
+            lastCsvData: csvDataHash,
+            program: programId || null
           });
           await server.save();
         }
@@ -114,6 +117,7 @@ async function syncServersFromCSV(csvData) {
         server.submissionTime = submissionTime;
         server.comments = comments;
         server.updatedAt = new Date();
+        if (programId) server.program = programId;
         
         if (dataChanged) {
           server.editCount = (server.editCount || 0) + 1;
@@ -132,7 +136,8 @@ async function syncServersFromCSV(csvData) {
           comments,
           currentStatus: 'unknown',
           editCount: 0,
-          lastCsvData: csvDataHash
+          lastCsvData: csvDataHash,
+          program: programId || null
         });
         await server.save();
       }
@@ -173,6 +178,10 @@ async function updateServerStatus(serverId, status, latency) {
 
 async function getVisibleServers() {
   return await Server.find({ hidden: false }).sort({ createdAt: -1 });
+}
+
+async function getVisibleServersByProgram(programId) {
+  return await Server.find({ hidden: false, program: programId }).sort({ createdAt: -1 });
 }
 
 async function getAllServers() {
@@ -264,6 +273,7 @@ module.exports = {
   syncServersFromCSV,
   updateServerStatus,
   getVisibleServers,
+  getVisibleServersByProgram,
   getAllServers,
   getServerById,
   getServerWithHistory,
