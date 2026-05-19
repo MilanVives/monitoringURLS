@@ -3,3 +3,4 @@ Node.csv
 .env
 uploads/*
 !uploads/.gitkeep
+.superpowers/
