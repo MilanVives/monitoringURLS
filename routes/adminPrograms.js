@@ -167,14 +167,8 @@ router.post('/:id/upload-csv', requireAuth, upload.single('csvFile'), async (req
     fs.copyFileSync(uploadedPath, targetPath);
     fs.unlinkSync(uploadedPath);
 
-    // processCSV expects { columnMappings, separator, skipLines } shape
-    const { separator, skipLines, ...columnMappings } = program.csvMapping.toObject
-      ? program.csvMapping.toObject()
-      : program.csvMapping;
-    const mappingArg = { columnMappings, separator, skipLines };
-
-    const csvData = await processCSV(mappingArg);
-    const servers = await dbService.syncServersFromCSV(csvData);
+    const csvData = await processCSV(program.csvMapping, targetPath);
+    const servers = await dbService.syncServersFromCSV(csvData, program._id);
 
     const { wss } = req.app.locals;
     await updateAllStatuses(servers, (url, status) => broadcastStatusUpdate(wss, url, status));
