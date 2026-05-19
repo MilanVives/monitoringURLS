@@ -6,15 +6,15 @@ const multer = require('multer');
 const app = express();
 
 const { connectDB } = require('./config/database');
-const { processCSV, getActiveMapping, detectCSVHeaders } = require('./services/csvService');
+const { processCSV } = require('./services/csvService');
 const { updateAllStatuses, checkUrlStatus } = require('./services/uptimeService');
 const { setupWebSocketServer, broadcastStatusUpdate } = require('./services/wsService');
 const { requireAuth, ADMIN_PASSWORD } = require('./middleware/auth');
 const { logAccess } = require('./middleware/accessLogger');
 const dbService = require('./services/databaseService');
-const CSVMapping = require('./models/CSVMapping');
+const adminProgramsRouter = require('./routes/adminPrograms');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 let urlData = [];
 
 const upload = multer({ dest: 'uploads/' });
@@ -41,18 +41,26 @@ app.use('/', (req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+app.use('/api/admin/programs', adminProgramsRouter);
 
 // API endpoint to get all URL data
 app.get('/api/urls', async (req, res) => {
   try {
-    const servers = await dbService.getVisibleServers();
+    let servers;
+    if (req.query.program) {
+      const Program = require('./models/Program');
+      const program = await Program.findOne({ slug: req.query.program });
+      if (!program) return res.json([]);
+      servers = await dbService.getVisibleServersByProgram(program._id);
+    } else {
+      servers = await dbService.getVisibleServers();
+    }
     const urlData = servers.map(server => {
-      const timeDiff = server.submissionTime ? require('./utils/dateUtils').getTimeDifference(server.submissionTime) : null;
-      const history = server.statusHistory.slice(-10);
+      const timeDiff = server.submissionTime
+        ? require('./utils/dateUtils').getTimeDifference(server.submissionTime) : null;
       const totalChecks = server.statusHistory.length;
       const onlineCount = server.statusHistory.filter(h => h.status === 'online').length;
       const uptimePercent = totalChecks > 0 ? Math.round((onlineCount / totalChecks) * 100) : 0;
-      
       return {
         _id: server._id.toString(),
         name: server.name,
@@ -60,6 +68,7 @@ app.get('/api/urls', async (req, res) => {
         email: server.email,
         github: server.github,
         documentation: server.documentation,
+        comments: server.comments,
         status: server.currentStatus,
         latency: server.currentLatency,
         submissionTime: server.submissionTime,
@@ -72,6 +81,27 @@ app.get('/api/urls', async (req, res) => {
     res.json(urlData);
   } catch (error) {
     console.error('Error fetching servers:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/programs', async (req, res) => {
+  try {
+    const Program = require('./models/Program');
+    const Server = require('./models/Server');
+    const programs = await Program.find().sort({ order: 1 });
+    const counts = await Promise.all(
+      programs.map(p => Server.countDocuments({ program: p._id, hidden: false }))
+    );
+    res.json(programs.map((p, i) => ({
+      _id: p._id,
+      name: p.name,
+      slug: p.slug,
+      order: p.order,
+      serverCount: counts[i],
+      tileFields: p.tileFields
+    })));
+  } catch (error) {
     res.status(500).json({ error: error.message });
   }
 });
@@ -150,12 +180,12 @@ app.post('/api/admin/servers/:id/unhide', requireAuth, async (req, res) => {
 
 app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
   try {
-    const { name, url, email, github, documentation, comments, submissionTime } = req.body;
-    
+    const { name, url, email, github, documentation, comments, submissionTime, programId } = req.body;
+
     if (!name || !url) {
       return res.status(400).json({ error: 'Name and URL are required' });
     }
-    
+
     const Server = require('./models/Server');
     const server = new Server({
       name,
@@ -167,7 +197,8 @@ app.post('/api/admin/servers/manual', requireAuth, async (req, res) => {
       submissionTime: submissionTime || new Date().toISOString(),
       currentStatus: 'unknown',
       hidden: false,
-      manuallyAdded: true
+      manuallyAdded: true,
+      program: programId || null
     });
     
     await server.save();
@@ -255,194 +286,6 @@ app.post('/api/admin/clear-database', requireAuth, async (req, res) => {
     res.json({ success: true, message: 'Database cleared' });
   } catch (error) {
     res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/admin/upload-csv', requireAuth, upload.single('csvFile'), async (req, res) => {
-  try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
-    }
-    
-    const fs = require('fs');
-    const uploadedPath = req.file.path;
-    const targetPath = path.join(__dirname, 'Node.csv');
-    
-    console.log(`[CSV Upload] Copying from ${uploadedPath} to ${targetPath}`);
-    
-    // Copy uploaded file to Node.csv
-    fs.copyFileSync(uploadedPath, targetPath);
-    
-    // Delete temp file
-    fs.unlinkSync(uploadedPath);
-    
-    console.log('[CSV Upload] File copied successfully, detecting headers...');
-    
-    // Detect headers from the CSV
-    let headers = [];
-    try {
-      headers = await detectCSVHeaders(targetPath);
-      console.log(`[CSV Upload] Detected ${headers.length} headers`);
-    } catch (headerError) {
-      console.error('[CSV Upload] Error detecting headers:', headerError);
-      headers = [];
-    }
-    
-    console.log('[CSV Upload] Processing CSV...');
-    
-    // Process CSV
-    const csvData = await processCSV();
-    console.log(`[CSV Upload] Processed ${csvData.length} records`);
-    
-    // Sync to database
-    const servers = await dbService.syncServersFromCSV(csvData);
-    console.log(`[CSV Upload] Synced ${servers.length} servers to database`);
-    
-    // Update urlData and trigger immediate check
-    urlData = servers;
-    console.log('[CSV Upload] Starting immediate status check...');
-    await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
-    console.log('[CSV Upload] Status check complete');
-    
-    res.json({ 
-      success: true, 
-      message: `Imported ${servers.length} servers`,
-      headers: headers,
-      detectedColumns: headers.length
-    });
-  } catch (error) {
-    console.error('[CSV Upload] Error:', error);
-    res.status(500).json({ 
-      error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
-  }
-});
-
-// CSV Mapping endpoints
-app.get('/api/admin/csv-mapping', requireAuth, async (req, res) => {
-  try {
-    const mapping = await getActiveMapping();
-    res.json(mapping);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/admin/csv-mappings', requireAuth, async (req, res) => {
-  try {
-    const mappings = await CSVMapping.find().sort({ createdAt: -1 });
-    res.json(mappings);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.post('/api/admin/csv-mapping', requireAuth, async (req, res) => {
-  try {
-    const { name, description, columnMappings, separator, skipLines } = req.body;
-    
-    // Deactivate all other mappings
-    await CSVMapping.updateMany({}, { isActive: false });
-    
-    const mapping = new CSVMapping({
-      name,
-      description,
-      columnMappings,
-      separator: separator || ';',
-      skipLines: skipLines || 1,
-      isActive: true
-    });
-    
-    await mapping.save();
-    res.json({ success: true, mapping });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.put('/api/admin/csv-mapping/:id', requireAuth, async (req, res) => {
-  try {
-    const { name, description, columnMappings, separator, skipLines, isActive } = req.body;
-    
-    if (isActive) {
-      // Deactivate all other mappings
-      await CSVMapping.updateMany({}, { isActive: false });
-    }
-    
-    const mapping = await CSVMapping.findByIdAndUpdate(
-      req.params.id,
-      {
-        name,
-        description,
-        columnMappings,
-        separator,
-        skipLines,
-        isActive,
-        updatedAt: new Date()
-      },
-      { new: true }
-    );
-    
-    res.json({ success: true, mapping });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.delete('/api/admin/csv-mapping/:id', requireAuth, async (req, res) => {
-  try {
-    await CSVMapping.findByIdAndDelete(req.params.id);
-    res.json({ success: true });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-});
-
-app.get('/api/admin/csv-preview', requireAuth, async (req, res) => {
-  try {
-    const targetPath = path.join(__dirname, 'Node.csv');
-    
-    // Check if file exists
-    const fs = require('fs');
-    if (!fs.existsSync(targetPath)) {
-      return res.json({ 
-        headers: [], 
-        preview: [],
-        message: 'No CSV file uploaded yet. Please upload a CSV file first.'
-      });
-    }
-    
-    const headers = await detectCSVHeaders(targetPath);
-    
-    // Read first 5 rows for preview
-    const readline = require('readline');
-    const fileStream = fs.createReadStream(targetPath);
-    const rl = readline.createInterface({ input: fileStream, crlfDelay: Infinity });
-    
-    const rows = [];
-    let lineCount = 0;
-    
-    for await (const line of rl) {
-      if (lineCount < 6) {
-        rows.push(line.split(';'));
-        lineCount++;
-      } else {
-        break;
-      }
-    }
-    
-    res.json({ 
-      headers: rows.length > 0 ? rows[0] : [], 
-      preview: rows.slice(1, 6) 
-    });
-  } catch (error) {
-    console.error('[CSV Preview] Error:', error);
-    res.status(500).json({ 
-      error: error.message,
-      headers: [],
-      preview: []
-    });
   }
 });
 
@@ -599,18 +442,6 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-app.post('/api/reload-csv', async (req, res) => {
-  try {
-    const csvData = await processCSV();
-    const servers = await dbService.syncServersFromCSV(csvData);
-    urlData = servers;
-    await updateAllStatuses(urlData, (url, status) => broadcastStatusUpdate(wss, url, status));
-    res.json({ success: true, message: 'CSV reloaded' });
-  } catch (error) {
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 async function initialize() {
   try {
     await connectDB();
@@ -624,22 +455,8 @@ async function initialize() {
       urlData = dbServers;
       console.log(`[INIT] Loaded ${urlData.length} servers from database`);
     } else {
-      // Empty database, try to import from CSV if it exists
-      console.log('[INIT] Database is empty, checking for CSV file...');
-      try {
-        const csvData = await processCSV();
-        if (csvData.length > 0) {
-          const servers = await dbService.syncServersFromCSV(csvData);
-          urlData = servers;
-          console.log(`[INIT] Imported ${urlData.length} servers from CSV`);
-        } else {
-          urlData = [];
-          console.log('[INIT] No servers found in CSV');
-        }
-      } catch (csvError) {
-        console.log('[INIT] No CSV file found or error reading CSV');
-        urlData = [];
-      }
+      urlData = [];
+      console.log('[INIT] Database empty. Create programs and upload CSVs via admin panel.');
     }
     
     if (urlData.length > 0) {
@@ -672,5 +489,6 @@ const server = app.listen(PORT, () => {
 });
 
 const wss = setupWebSocketServer(server);
+app.locals.wss = wss;
 
 initialize();
