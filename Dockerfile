@@ -14,6 +14,7 @@ COPY config/ config/
 COPY models/ models/
 COPY middleware/ middleware/
 COPY public/ public/
+COPY routes/ routes/
 COPY services/ services/
 COPY utils/ utils/
 COPY server.js .

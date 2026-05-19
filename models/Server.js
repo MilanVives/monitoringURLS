@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const statusCheckSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
-  status: { type: String, enum: ['online', 'offline', 'error'], required: true },
+  status: { type: String, enum: ['online', 'offline', 'error', 'degraded'], required: true },
   latency: { type: Number, default: null }
 });
 
@@ -14,7 +14,7 @@ const serverSchema = new mongoose.Schema({
   documentation: String,
   submissionTime: String,
   comments: String,
-  currentStatus: { type: String, enum: ['online', 'offline', 'error', 'unknown'], default: 'unknown' },
+  currentStatus: { type: String, enum: ['online', 'offline', 'error', 'degraded', 'unknown'], default: 'unknown' },
   currentLatency: Number,
   statusHistory: [statusCheckSchema],
   hidden: { type: Boolean, default: false },
