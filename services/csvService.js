@@ -59,10 +59,14 @@ async function processCSV(csvMapping, filePath = 'Node.csv') {
         const latestByEmail = {};
         allRecords.forEach((rec, idx) => {
           if (!rec.email) return;
-          const [day, month, yearAndTime] = rec.submissionTime.split('-');
-          const [year, time] = yearAndTime.split(' ');
-          const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}`;
-          const recDate = new Date(isoString);
+          let recDate = new Date(0);
+          try {
+            const [day, month, yearAndTime] = rec.submissionTime.split('-');
+            const [year, time] = yearAndTime.split(' ');
+            const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${time}`;
+            const parsed = new Date(isoString);
+            if (!isNaN(parsed.getTime())) recDate = parsed;
+          } catch (_) {}
           if (!latestByEmail[rec.email] || recDate > latestByEmail[rec.email].date) {
             latestByEmail[rec.email] = { date: recDate, _idx: idx };
           }
