@@ -735,7 +735,7 @@
 
       const note = document.createElement('p');
       note.style.cssText = 'color:#888;font-size:13px;margin-bottom:16px;';
-      note.textContent = 'Column indices start at 0.';
+      note.textContent = 'Column 1 = first column. Use the Preview CSV button to verify.';
       card.appendChild(note);
 
       const row1 = document.createElement('div');
@@ -766,13 +766,13 @@
 
       inpSep.value = m.separator || ';';
       inpSkip.value = m.skipLines ?? 1;
-      card.querySelector('#m-nameColumn').value = m.nameColumn ?? 4;
-      card.querySelector('#m-urlColumn').value = m.urlColumn ?? 8;
-      card.querySelector('#m-emailColumn').value = m.emailColumn ?? 3;
-      card.querySelector('#m-githubColumn').value = m.githubColumn ?? 7;
-      card.querySelector('#m-documentationColumn').value = m.documentationColumn ?? 9;
-      card.querySelector('#m-submissionTimeColumn').value = m.submissionTimeColumn ?? 2;
-      card.querySelector('#m-commentsColumn').value = m.commentsColumn ?? 20;
+      card.querySelector('#m-nameColumn').value = (m.nameColumn ?? 4) + 1;
+      card.querySelector('#m-urlColumn').value = (m.urlColumn ?? 8) + 1;
+      card.querySelector('#m-emailColumn').value = (m.emailColumn ?? 3) + 1;
+      card.querySelector('#m-githubColumn').value = (m.githubColumn ?? 7) + 1;
+      card.querySelector('#m-documentationColumn').value = (m.documentationColumn ?? 9) + 1;
+      card.querySelector('#m-submissionTimeColumn').value = (m.submissionTimeColumn ?? 2) + 1;
+      card.querySelector('#m-commentsColumn').value = (m.commentsColumn ?? 20) + 1;
 
       const btnRow = document.createElement('div');
       btnRow.style.cssText = 'margin-top:8px;display:flex;gap:10px;flex-wrap:wrap;';
@@ -805,11 +805,13 @@
     }
 
     async function saveCsvMapping(programId) {
+      const colFields = new Set(['nameColumn','urlColumn','emailColumn','githubColumn','documentationColumn','submissionTimeColumn','commentsColumn']);
       const fields = ['separator','skipLines','nameColumn','urlColumn','emailColumn','githubColumn','documentationColumn','submissionTimeColumn','commentsColumn'];
       const body = {};
       fields.forEach(f => {
         const el = document.getElementById('m-' + f);
-        body[f] = el.type === 'number' ? parseInt(el.value) : el.value;
+        const val = el.type === 'number' ? parseInt(el.value) : el.value;
+        body[f] = colFields.has(f) ? val - 1 : val;
       });
       const res = await fetch('/api/admin/programs/' + programId + '/csv-mapping', {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
@@ -838,7 +840,7 @@
       const headerRow = document.createElement('tr');
       data.headers.forEach((h, i) => {
         const th = document.createElement('th');
-        th.textContent = 'Col ' + i + ' — ' + h.substring(0, 20);
+        th.textContent = 'Col ' + (i + 1) + ' — ' + h.substring(0, 20);
         headerRow.appendChild(th);
       });
       thead.appendChild(headerRow);
