@@ -244,14 +244,39 @@ async function getServerStatistics(serverId) {
   const onlineCount = history.filter(h => h.status === 'online').length;
   const offlineCount = history.filter(h => h.status === 'offline').length;
   const uptimePercentage = Math.round((onlineCount / totalChecks) * 100);
-  
+
   const latencies = history.filter(h => h.latency !== null && h.latency !== undefined).map(h => h.latency);
-  const averageLatency = latencies.length > 0 
+  const averageLatency = latencies.length > 0
     ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
     : null;
-  
+
   const lastCheck = history[history.length - 1];
-  
+
+  // Downtime incident analysis — single pass through chronological history
+  const downStatuses = new Set(['offline', 'degraded', 'error']);
+  let incidentCount = 0;
+  let inDowntime = false;
+  let lastDowntimeStart = null;
+  let lastDowntimeEnd = null;
+  let currentIncidentStart = null;
+
+  for (const h of history) {
+    const isDown = downStatuses.has(h.status);
+    if (isDown && !inDowntime) {
+      inDowntime = true;
+      incidentCount++;
+      currentIncidentStart = h.timestamp;
+    } else if (!isDown && inDowntime) {
+      inDowntime = false;
+      lastDowntimeStart = currentIncidentStart;
+      lastDowntimeEnd = h.timestamp;
+    }
+  }
+  if (inDowntime) {
+    lastDowntimeStart = currentIncidentStart;
+    // lastDowntimeEnd stays null — server is currently down
+  }
+
   return {
     server,
     stats: {
@@ -264,7 +289,10 @@ async function getServerStatistics(serverId) {
         timestamp: lastCheck.timestamp,
         status: lastCheck.status,
         latency: lastCheck.latency
-      } : null
+      } : null,
+      incidentCount,
+      lastDowntimeStart,
+      lastDowntimeEnd
     }
   };
 }

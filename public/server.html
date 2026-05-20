@@ -149,13 +149,9 @@
       transition: background-color 0.3s;
     }
     
-    .chart-bar.offline {
-      background-color: #F44336;
-    }
-    
-    .chart-bar.unknown {
-      background-color: #FFC107;
-    }
+    .chart-bar.offline  { background-color: #F44336; }
+    .chart-bar.degraded { background-color: #FF9800; }
+    .chart-bar.unknown  { background-color: #FFC107; }
     
     .history-table {
       width: 100%;
@@ -258,8 +254,24 @@
           <div class="stat-value" id="avg-latency">-</div>
           <div class="stat-label">Avg Latency (ms)</div>
         </div>
+        <div class="stat-card">
+          <div class="stat-value" id="incident-count">-</div>
+          <div class="stat-label">Downtime Incidents</div>
+        </div>
       </div>
-      
+
+      <div class="server-info" id="downtime-section" style="display:none;">
+        <h3 style="margin-top:0;">Last Downtime</h3>
+        <div class="info-row">
+          <span class="info-label">Started:</span>
+          <span id="downtime-start"></span>
+        </div>
+        <div class="info-row" id="downtime-duration-row">
+          <span class="info-label">Duration:</span>
+          <span id="downtime-duration"></span>
+        </div>
+      </div>
+
       <div class="history-section">
         <h3>Status History</h3>
         <div class="history-chart" id="history-chart"></div>
@@ -305,6 +317,14 @@
       }
     }
     
+    function formatDuration(ms) {
+      if (ms < 60000) return Math.round(ms / 1000) + ' sec';
+      if (ms < 3600000) return Math.round(ms / 60000) + ' min';
+      const h = Math.floor(ms / 3600000);
+      const m = Math.round((ms % 3600000) / 60000);
+      return m > 0 ? `${h}h ${m}m` : `${h}h`;
+    }
+
     function showError(message) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('content').style.display = 'none';
@@ -362,9 +382,25 @@
       document.getElementById('total-checks').textContent = stats.totalChecks;
       document.getElementById('online-count').textContent = stats.onlineCount;
       document.getElementById('offline-count').textContent = stats.offlineCount;
-      document.getElementById('avg-latency').textContent = 
+      document.getElementById('avg-latency').textContent =
         stats.averageLatency !== null ? stats.averageLatency : '-';
-      
+      document.getElementById('incident-count').textContent = stats.incidentCount ?? 0;
+
+      if (stats.lastDowntimeStart) {
+        document.getElementById('downtime-section').style.display = '';
+        document.getElementById('downtime-start').textContent =
+          new Date(stats.lastDowntimeStart).toLocaleString();
+        const durRow = document.getElementById('downtime-duration-row');
+        const durEl  = document.getElementById('downtime-duration');
+        if (stats.lastDowntimeEnd) {
+          durEl.textContent = formatDuration(new Date(stats.lastDowntimeEnd) - new Date(stats.lastDowntimeStart));
+        } else {
+          durRow.style.display = 'none';
+          document.getElementById('downtime-start').textContent +=
+            ' (currently down)';
+        }
+      }
+
       renderHistoryChart(server.statusHistory);
       renderHistoryTable(server.statusHistory);
     }
