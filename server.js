@@ -13,6 +13,7 @@ const { requireAuth, ADMIN_PASSWORD } = require('./middleware/auth');
 const { logAccess } = require('./middleware/accessLogger');
 const dbService = require('./services/databaseService');
 const adminProgramsRouter = require('./routes/adminPrograms');
+const webhookRouter = require('./routes/webhook');
 
 const PORT = process.env.PORT || 3000;
 let urlData = [];
@@ -41,7 +42,9 @@ app.use('/', (req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, 'public')));
+
 app.use('/api/admin/programs', adminProgramsRouter);
+app.use('/api/webhook/forms', webhookRouter);
 
 // API endpoint to get all URL data
 app.get('/api/urls', async (req, res) => {
