@@ -723,8 +723,19 @@
     async function loadWebhookTab(programId) {
       const content = document.getElementById('subtab-content');
       content.textContent = 'Loading...';
-      const res = await fetch('/api/admin/programs/' + programId + '/webhook', { credentials: 'same-origin' });
-      const data = await res.json();
+      let data;
+      try {
+        const res = await fetch('/api/admin/programs/' + programId + '/webhook', { credentials: 'same-origin' });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        data = await res.json();
+      } catch (e) {
+        const errDiv = document.createElement('div');
+        errDiv.className = 'msg-error';
+        errDiv.textContent = 'Failed to load webhook config: ' + e.message;
+        content.textContent = '';
+        content.appendChild(errDiv);
+        return;
+      }
       content.textContent = '';
 
       const card = document.createElement('div');
