@@ -364,7 +364,9 @@ async function syncSingleServer(data, programId) {
 
     if (server) {
       const dataChanged = server.lastCsvData !== csvDataHash;
+      const urlChanged = server.url !== url;
       server.name = name;
+      server.url = url;
       server.email = email;
       server.github = github;
       server.documentation = documentation;
@@ -375,6 +377,11 @@ async function syncSingleServer(data, programId) {
       if (dataChanged) {
         server.editCount = (server.editCount || 0) + 1;
         server.lastCsvData = csvDataHash;
+      }
+      if (urlChanged) {
+        server.statusHistory = [];
+        server.currentStatus = 'unknown';
+        server.currentLatency = null;
       }
       await server.save();
     } else {

@@ -493,5 +493,15 @@ const server = app.listen(PORT, () => {
 
 const wss = setupWebSocketServer(server);
 app.locals.wss = wss;
+app.locals.addToMonitoring = (server) => {
+  const existingIndex = urlData.findIndex(s => s._id.toString() === server._id.toString());
+  if (existingIndex === -1) {
+    urlData.push(server);
+  } else {
+    urlData[existingIndex] = server;
+  }
+  const { initializeUptimeHistory } = require('./services/uptimeService');
+  initializeUptimeHistory(server.url);
+};
 
 initialize();
