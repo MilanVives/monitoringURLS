@@ -223,10 +223,10 @@ async function clearAllServers() {
 async function getServerStatistics(serverId) {
   const server = await Server.findById(serverId);
   if (!server) return null;
-  
+
   const history = server.statusHistory;
   const totalChecks = history.length;
-  
+
   if (totalChecks === 0) {
     return {
       server,
@@ -240,7 +240,7 @@ async function getServerStatistics(serverId) {
       }
     };
   }
-  
+
   const onlineCount = history.filter(h => h.status === 'online').length;
   const offlineCount = history.filter(h => h.status === 'offline').length;
   const uptimePercentage = Math.round((onlineCount / totalChecks) * 100);
@@ -297,8 +297,102 @@ async function getServerStatistics(serverId) {
   };
 }
 
+async function syncSingleServer(data, programId) {
+  const { name, url, email, github, documentation, submissionTime, comments } = data;
+
+  const csvDataHash = JSON.stringify({ name, url, email, github, documentation, submissionTime, comments });
+
+  let server;
+
+  if (email) {
+    server = await Server.findOne({ email });
+
+    if (server) {
+      const dataChanged = server.lastCsvData !== csvDataHash;
+      const urlChanged = server.url !== url;
+
+      server.name = name;
+      server.url = url;
+      server.github = github;
+      server.documentation = documentation;
+      server.submissionTime = submissionTime;
+      server.comments = comments;
+      server.updatedAt = new Date();
+      if (programId) server.program = programId;
+
+      if (dataChanged) {
+        server.editCount = (server.editCount || 0) + 1;
+        server.lastCsvData = csvDataHash;
+      }
+      if (urlChanged) {
+        server.statusHistory = [];
+        server.currentStatus = 'unknown';
+        server.currentLatency = null;
+      }
+
+      await server.save();
+    } else {
+      const serverByUrl = await Server.findOne({ url });
+
+      if (serverByUrl) {
+        const dataChanged = serverByUrl.lastCsvData !== csvDataHash;
+        serverByUrl.name = name;
+        serverByUrl.email = email;
+        serverByUrl.github = github;
+        serverByUrl.documentation = documentation;
+        serverByUrl.submissionTime = submissionTime;
+        serverByUrl.comments = comments;
+        serverByUrl.updatedAt = new Date();
+        if (programId) serverByUrl.program = programId;
+        if (dataChanged) {
+          serverByUrl.editCount = (serverByUrl.editCount || 0) + 1;
+          serverByUrl.lastCsvData = csvDataHash;
+        }
+        await serverByUrl.save();
+        server = serverByUrl;
+      } else {
+        server = new Server({
+          name, url, email, github, documentation, submissionTime, comments,
+          currentStatus: 'unknown', editCount: 0,
+          lastCsvData: csvDataHash, program: programId || null
+        });
+        await server.save();
+      }
+    }
+  } else {
+    server = await Server.findOne({ url });
+
+    if (server) {
+      const dataChanged = server.lastCsvData !== csvDataHash;
+      server.name = name;
+      server.email = email;
+      server.github = github;
+      server.documentation = documentation;
+      server.submissionTime = submissionTime;
+      server.comments = comments;
+      server.updatedAt = new Date();
+      if (programId) server.program = programId;
+      if (dataChanged) {
+        server.editCount = (server.editCount || 0) + 1;
+        server.lastCsvData = csvDataHash;
+      }
+      await server.save();
+    } else {
+      server = new Server({
+        name, url, email, github, documentation, submissionTime, comments,
+        currentStatus: 'unknown', editCount: 0,
+        lastCsvData: csvDataHash, program: programId || null
+      });
+      await server.save();
+    }
+  }
+
+  return server;
+}
+
 module.exports = {
   syncServersFromCSV,
+  syncSingleServer,
   updateServerStatus,
   getVisibleServers,
   getVisibleServersByProgram,
