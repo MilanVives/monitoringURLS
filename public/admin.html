@@ -878,7 +878,8 @@
         'Add action: Microsoft Forms — "Get response details" → same form, Response ID from trigger',
         'Add action: HTTP → Method: POST, URI: (paste Webhook URL above)',
         'HTTP Headers: Authorization = Bearer (paste Bearer Token above)',
-        'HTTP Body (Content-Type: application/json):\n{\n  "name": <Naam>,\n  "email": <Responder email>,\n  "url": <URL Live Productie Frontend>,\n  "github": <Github Username>,\n  "documentation": <Alle andere URLs>,\n  "submissionTime": <Submit date>,\n  "comments": <Opmerkingen>\n}',
+        'HTTP Headers: add Content-Type = application/json',
+        'HTTP Body — type this JSON, then click inside each "" and use Dynamic content to insert the value from "Get response details":\n{\n  "name": "",\n  "email": "",\n  "url": "",\n  "github": "",\n  "documentation": "",\n  "submissionTime": "",\n  "comments": ""\n}\nField mapping: name→Naam, email→Responder email, url→URL Live Productie Frontend, github→Github Username, documentation→Alle andere URLs, submissionTime→Submission time, comments→Opmerkingen',
         'Save and test with a real form submission'
       ];
 
