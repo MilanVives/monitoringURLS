@@ -350,7 +350,7 @@
 
       const tabs = document.createElement('div');
       tabs.className = 'subtabs';
-      [['servers','Servers'],['tile-fields','Tile Fields'],['csv-mapping','CSV Mapping'],['access-logs','Access Logs']].forEach(([key, label], i) => {
+      [['servers','Servers'],['tile-fields','Tile Fields'],['csv-mapping','CSV Mapping'],['webhook','Webhook'],['access-logs','Access Logs']].forEach(([key, label], i) => {
         const tab = document.createElement('div');
         tab.className = 'subtab' + (i === 0 ? ' active' : '');
         tab.textContent = label;
@@ -373,6 +373,7 @@
       if (tab === 'servers')         loadServersTab(id);
       else if (tab === 'tile-fields') loadTileFieldsTab(id);
       else if (tab === 'csv-mapping') loadCsvMappingTab(id);
+      else if (tab === 'webhook')     loadWebhookTab(id);
       else if (tab === 'access-logs') loadAccessLogsTab();
     }
 
@@ -717,6 +718,177 @@
       fg.appendChild(lbl);
       fg.appendChild(inp);
       return { fg, inp };
+    }
+
+    async function loadWebhookTab(programId) {
+      const content = document.getElementById('subtab-content');
+      content.textContent = 'Loading...';
+      const res = await fetch('/api/admin/programs/' + programId + '/webhook', { credentials: 'same-origin' });
+      const data = await res.json();
+      content.textContent = '';
+
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      const h3 = document.createElement('h3');
+      h3.textContent = 'Power Automate Webhook';
+      card.appendChild(h3);
+
+      const note = document.createElement('p');
+      note.style.cssText = 'color:#888;font-size:13px;margin-bottom:20px;';
+      note.textContent = 'Each new Microsoft Forms submission is automatically ingested when Power Automate posts to this endpoint.';
+      card.appendChild(note);
+
+      // Enable toggle
+      const toggleRow = document.createElement('div');
+      toggleRow.style.cssText = 'display:flex;align-items:center;gap:12px;margin-bottom:20px;';
+      const toggleLabel = document.createElement('span');
+      toggleLabel.style.fontWeight = 'bold';
+      toggleLabel.textContent = 'Webhook enabled';
+      const toggleSwitch = document.createElement('label');
+      toggleSwitch.className = 'toggle-switch';
+      const toggleInput = document.createElement('input');
+      toggleInput.type = 'checkbox';
+      toggleInput.checked = data.webhookEnabled;
+      toggleInput.onchange = async () => {
+        await fetch('/api/admin/programs/' + programId + '/webhook-enabled', {
+          method: 'PATCH', credentials: 'same-origin',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: toggleInput.checked })
+        });
+      };
+      const toggleTrack = document.createElement('span');
+      toggleTrack.className = 'toggle-track';
+      toggleSwitch.appendChild(toggleInput);
+      toggleSwitch.appendChild(toggleTrack);
+      toggleRow.appendChild(toggleLabel);
+      toggleRow.appendChild(toggleSwitch);
+      card.appendChild(toggleRow);
+
+      // Webhook URL
+      const urlGroup = document.createElement('div');
+      urlGroup.className = 'form-group';
+      const urlLabel = document.createElement('label');
+      urlLabel.textContent = 'Webhook URL';
+      const urlRow = document.createElement('div');
+      urlRow.style.cssText = 'display:flex;gap:8px;';
+      const urlInput = document.createElement('input');
+      urlInput.type = 'text';
+      urlInput.readOnly = true;
+      urlInput.value = window.location.origin + '/api/webhook/forms/' + data.slug;
+      urlInput.style.fontFamily = 'monospace;';
+      const urlCopyBtn = document.createElement('button');
+      urlCopyBtn.className = 'btn btn-sm';
+      urlCopyBtn.style.cssText = 'background:#666;color:white;white-space:nowrap;';
+      urlCopyBtn.textContent = 'Copy';
+      urlCopyBtn.onclick = () => { navigator.clipboard.writeText(urlInput.value); urlCopyBtn.textContent = 'Copied!'; setTimeout(() => urlCopyBtn.textContent = 'Copy', 2000); };
+      urlRow.appendChild(urlInput);
+      urlRow.appendChild(urlCopyBtn);
+      urlGroup.appendChild(urlLabel);
+      urlGroup.appendChild(urlRow);
+      card.appendChild(urlGroup);
+
+      // Bearer token
+      const tokenGroup = document.createElement('div');
+      tokenGroup.className = 'form-group';
+      const tokenLabel = document.createElement('label');
+      tokenLabel.textContent = 'Bearer Token';
+      const tokenRow = document.createElement('div');
+      tokenRow.style.cssText = 'display:flex;gap:8px;';
+      const tokenInput = document.createElement('input');
+      tokenInput.type = 'password';
+      tokenInput.readOnly = true;
+      tokenInput.id = 'webhook-token-input';
+      tokenInput.value = data.webhookToken || '';
+      tokenInput.placeholder = data.webhookToken ? '••••••••••••••••' : 'No token yet — click Regenerate';
+      tokenInput.style.fontFamily = 'monospace';
+      const revealBtn = document.createElement('button');
+      revealBtn.className = 'btn btn-sm';
+      revealBtn.style.cssText = 'background:#666;color:white;';
+      revealBtn.textContent = 'Reveal';
+      revealBtn.onclick = () => {
+        tokenInput.type = tokenInput.type === 'password' ? 'text' : 'password';
+        revealBtn.textContent = tokenInput.type === 'password' ? 'Reveal' : 'Hide';
+      };
+      const tokenCopyBtn = document.createElement('button');
+      tokenCopyBtn.className = 'btn btn-sm';
+      tokenCopyBtn.style.cssText = 'background:#666;color:white;';
+      tokenCopyBtn.textContent = 'Copy';
+      tokenCopyBtn.onclick = () => { navigator.clipboard.writeText(tokenInput.value); tokenCopyBtn.textContent = 'Copied!'; setTimeout(() => tokenCopyBtn.textContent = 'Copy', 2000); };
+      tokenRow.appendChild(tokenInput);
+      tokenRow.appendChild(revealBtn);
+      tokenRow.appendChild(tokenCopyBtn);
+      tokenGroup.appendChild(tokenLabel);
+      tokenGroup.appendChild(tokenRow);
+      card.appendChild(tokenGroup);
+
+      // Regenerate button
+      const regenBtn = document.createElement('button');
+      regenBtn.className = 'btn btn-warning';
+      regenBtn.style.marginTop = '4px';
+      regenBtn.textContent = 'Regenerate Token';
+      regenBtn.onclick = async () => {
+        if (!confirm('Regenerate the token? The old token will stop working immediately.')) return;
+        const r = await fetch('/api/admin/programs/' + programId + '/webhook-token', {
+          method: 'PATCH', credentials: 'same-origin'
+        });
+        const d = await r.json();
+        if (d.webhookToken) {
+          tokenInput.value = d.webhookToken;
+          tokenInput.type = 'text';
+          revealBtn.textContent = 'Hide';
+          toggleInput.checked = true;
+          regenMsg.textContent = 'New token generated. Copy it now.';
+          regenMsg.className = 'msg-success';
+        }
+      };
+      card.appendChild(regenBtn);
+
+      const regenMsg = document.createElement('div');
+      regenMsg.id = 'regen-msg';
+      card.appendChild(regenMsg);
+
+      // Setup instructions
+      const hr = document.createElement('hr');
+      hr.style.cssText = 'margin:24px 0;border:none;border-top:1px solid #eee;';
+      card.appendChild(hr);
+
+      const instructionsTitle = document.createElement('h3');
+      instructionsTitle.style.marginBottom = '12px';
+      instructionsTitle.textContent = 'Power Automate Setup';
+      card.appendChild(instructionsTitle);
+
+      const steps = [
+        'Go to make.powerautomate.com → New flow → Automated cloud flow',
+        'Trigger: Microsoft Forms — "When a new response is submitted" → select your form',
+        'Add action: Microsoft Forms — "Get response details" → same form, Response ID from trigger',
+        'Add action: HTTP → Method: POST, URI: (paste Webhook URL above)',
+        'HTTP Headers: Authorization = Bearer (paste Bearer Token above)',
+        'HTTP Body (Content-Type: application/json):\n{\n  "name": <Naam>,\n  "email": <Responder email>,\n  "url": <URL Live Productie Frontend>,\n  "github": <Github Username>,\n  "documentation": <Alle andere URLs>,\n  "submissionTime": <Submit date>,\n  "comments": <Opmerkingen>\n}',
+        'Save and test with a real form submission'
+      ];
+
+      const ol = document.createElement('ol');
+      ol.style.cssText = 'padding-left:20px;line-height:1.8;font-size:14px;';
+      steps.forEach(step => {
+        const li = document.createElement('li');
+        li.style.marginBottom = '6px';
+        const pre = step.includes('\n');
+        if (pre) {
+          const parts = step.split('\n');
+          li.textContent = parts[0];
+          const code = document.createElement('pre');
+          code.style.cssText = 'background:#f5f5f5;padding:10px;border-radius:4px;margin-top:6px;font-size:12px;overflow-x:auto;';
+          code.textContent = parts.slice(1).join('\n');
+          li.appendChild(code);
+        } else {
+          li.textContent = step;
+        }
+        ol.appendChild(li);
+      });
+      card.appendChild(ol);
+
+      content.appendChild(card);
     }
 
     async function loadCsvMappingTab(programId) {
