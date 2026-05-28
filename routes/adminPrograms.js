@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
 const Program = require('../models/Program');
 const Server = require('../models/Server');
 const { requireAuth } = require('../middleware/auth');
@@ -197,7 +198,7 @@ router.get('/:id/webhook', requireAuth, async (req, res) => {
 // PATCH /api/admin/programs/:id/webhook-token
 router.patch('/:id/webhook-token', requireAuth, async (req, res) => {
   try {
-    const token = require('crypto').randomUUID();
+    const token = crypto.randomUUID();
     const program = await Program.findByIdAndUpdate(
       req.params.id,
       { webhookToken: token, webhookEnabled: true },
