@@ -23,12 +23,14 @@ const tileFieldsSchema = new mongoose.Schema({
 }, { _id: false });
 
 const programSchema = new mongoose.Schema({
-  name:       { type: String, required: true },
-  slug:       { type: String, required: true, unique: true },
-  order:      { type: Number, default: 0 },
-  csvMapping: { type: csvMappingSchema, default: {} },
-  tileFields: { type: tileFieldsSchema, default: {} },
-  createdAt:  { type: Date, default: Date.now }
+  name:           { type: String, required: true },
+  slug:           { type: String, required: true, unique: true },
+  order:          { type: Number, default: 0 },
+  csvMapping:     { type: csvMappingSchema, default: {} },
+  tileFields:     { type: tileFieldsSchema, default: {} },
+  webhookToken:   { type: String, default: null },
+  webhookEnabled: { type: Boolean, default: false },
+  createdAt:      { type: Date, default: Date.now }
 });
 
 module.exports = mongoose.model('Program', programSchema);
