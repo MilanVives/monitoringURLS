@@ -179,4 +179,51 @@ router.post('/:id/upload-csv', requireAuth, upload.single('csvFile'), async (req
   }
 });
 
+// GET /api/admin/programs/:id/webhook
+router.get('/:id/webhook', requireAuth, async (req, res) => {
+  try {
+    const program = await Program.findById(req.params.id).select('webhookEnabled webhookToken slug');
+    if (!program) return res.status(404).json({ error: 'Program not found' });
+    res.json({
+      webhookEnabled: program.webhookEnabled,
+      webhookToken: program.webhookToken,
+      slug: program.slug
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /api/admin/programs/:id/webhook-token
+router.patch('/:id/webhook-token', requireAuth, async (req, res) => {
+  try {
+    const token = require('crypto').randomUUID();
+    const program = await Program.findByIdAndUpdate(
+      req.params.id,
+      { webhookToken: token, webhookEnabled: true },
+      { new: true }
+    );
+    if (!program) return res.status(404).json({ error: 'Program not found' });
+    res.json({ success: true, webhookToken: token, webhookEnabled: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PATCH /api/admin/programs/:id/webhook-enabled
+router.patch('/:id/webhook-enabled', requireAuth, async (req, res) => {
+  try {
+    const { enabled } = req.body;
+    const program = await Program.findByIdAndUpdate(
+      req.params.id,
+      { webhookEnabled: !!enabled },
+      { new: true }
+    );
+    if (!program) return res.status(404).json({ error: 'Program not found' });
+    res.json({ success: true, webhookEnabled: program.webhookEnabled });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;
