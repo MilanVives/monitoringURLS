@@ -776,12 +776,12 @@
       urlInput.type = 'text';
       urlInput.readOnly = true;
       urlInput.value = window.location.origin + '/api/webhook/forms/' + data.slug;
-      urlInput.style.fontFamily = 'monospace;';
+      urlInput.style.fontFamily = 'monospace';
       const urlCopyBtn = document.createElement('button');
       urlCopyBtn.className = 'btn btn-sm';
       urlCopyBtn.style.cssText = 'background:#666;color:white;white-space:nowrap;';
       urlCopyBtn.textContent = 'Copy';
-      urlCopyBtn.onclick = () => { navigator.clipboard.writeText(urlInput.value); urlCopyBtn.textContent = 'Copied!'; setTimeout(() => urlCopyBtn.textContent = 'Copy', 2000); };
+      urlCopyBtn.onclick = () => { if (navigator.clipboard) { navigator.clipboard.writeText(urlInput.value).catch(() => {}); } urlCopyBtn.textContent = 'Copied!'; setTimeout(() => urlCopyBtn.textContent = 'Copy', 2000); };
       urlRow.appendChild(urlInput);
       urlRow.appendChild(urlCopyBtn);
       urlGroup.appendChild(urlLabel);
@@ -814,7 +814,7 @@
       tokenCopyBtn.className = 'btn btn-sm';
       tokenCopyBtn.style.cssText = 'background:#666;color:white;';
       tokenCopyBtn.textContent = 'Copy';
-      tokenCopyBtn.onclick = () => { navigator.clipboard.writeText(tokenInput.value); tokenCopyBtn.textContent = 'Copied!'; setTimeout(() => tokenCopyBtn.textContent = 'Copy', 2000); };
+      tokenCopyBtn.onclick = () => { if (navigator.clipboard) { navigator.clipboard.writeText(tokenInput.value).catch(() => {}); } tokenCopyBtn.textContent = 'Copied!'; setTimeout(() => tokenCopyBtn.textContent = 'Copy', 2000); };
       tokenRow.appendChild(tokenInput);
       tokenRow.appendChild(revealBtn);
       tokenRow.appendChild(tokenCopyBtn);
@@ -840,6 +840,9 @@
           toggleInput.checked = true;
           regenMsg.textContent = 'New token generated. Copy it now.';
           regenMsg.className = 'msg-success';
+        } else {
+          regenMsg.textContent = d.error || 'Failed to regenerate token. Try again.';
+          regenMsg.className = 'msg-error';
         }
       };
       card.appendChild(regenBtn);
