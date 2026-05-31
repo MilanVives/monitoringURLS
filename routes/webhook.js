@@ -29,8 +29,10 @@ router.post('/:slug', async (req, res) => {
   const { name, email, url, github, documentation, submissionTime, comments } = req.body || {};
 
   const bodyKeys = Object.keys(req.body || {});
-  const contentType = req.headers['content-type'] || '(none)';
-  console.log(`[webhook] slug=${req.params.slug} content-type="${contentType}" body keys: [${bodyKeys.join(', ')}] email=${JSON.stringify(email)} url=${JSON.stringify(url)}`);
+  if (process.env.NODE_ENV !== 'production') {
+    const contentType = (req.headers['content-type'] || '(none)').replace(/[\r\n]/g, ' ');
+    console.log(`[webhook] slug=${req.params.slug} content-type="${contentType}" body keys: ${JSON.stringify(bodyKeys)}`);
+  }
 
   if (!email && !url) {
     return res.status(400).json({ error: 'email and url are required', received: bodyKeys, contentType });
