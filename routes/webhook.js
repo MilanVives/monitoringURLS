@@ -26,10 +26,20 @@ router.post('/:slug', async (req, res) => {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const { name, email, url, github, documentation, submissionTime, comments } = req.body;
+  const { name, email, url, github, documentation, submissionTime, comments } = req.body || {};
 
-  if (!email || !url) {
-    return res.status(400).json({ error: 'email and url are required' });
+  const bodyKeys = Object.keys(req.body || {});
+  const contentType = req.headers['content-type'] || '(none)';
+  console.log(`[webhook] slug=${req.params.slug} content-type="${contentType}" body keys: [${bodyKeys.join(', ')}] email=${JSON.stringify(email)} url=${JSON.stringify(url)}`);
+
+  if (!email && !url) {
+    return res.status(400).json({ error: 'email and url are required', received: bodyKeys, contentType });
+  }
+  if (!email) {
+    return res.status(400).json({ error: 'email is required', received: bodyKeys });
+  }
+  if (!url) {
+    return res.status(400).json({ error: 'url is required', received: bodyKeys });
   }
 
   try {

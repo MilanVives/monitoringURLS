@@ -171,7 +171,13 @@ router.post('/:id/upload-csv', requireAuth, upload.single('csvFile'), async (req
     const csvData = await processCSV(program.csvMapping, targetPath);
     const servers = await dbService.syncServersFromCSV(csvData, program._id);
 
-    const { wss } = req.app.locals;
+    const { wss, addToMonitoring } = req.app.locals;
+    if (addToMonitoring) {
+      for (const server of servers) {
+        addToMonitoring(server);
+      }
+    }
+
     await updateAllStatuses(servers, (url, status) => broadcastStatusUpdate(wss, url, status));
 
     res.json({ success: true, message: `Imported ${servers.length} servers` });
