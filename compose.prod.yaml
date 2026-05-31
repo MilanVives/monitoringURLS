@@ -10,17 +10,18 @@ services:
     networks:
       - monitoring-network
     healthcheck:
-      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/monitoring --quiet
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping').ok", "--quiet", "--host", "localhost", "--port", "27017"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
 
   monitor:
     image: ghcr.io/milanvives/monitoringurls:latest
     container_name: url-monitor
     depends_on:
       mongodb:
-        condition: service_healthy
+        condition: service_started
     ports:
       - "3000:3000"
     volumes:
