@@ -297,10 +297,53 @@ async function getServerStatistics(serverId) {
   };
 }
 
+function normalizeForHash(v) {
+  return v == null ? '' : String(v).trim();
+}
+
+function makeWebhookHash(data) {
+  const { name, url, email, github, documentation, submissionTime, comments } = data;
+  return JSON.stringify({
+    name: normalizeForHash(name),
+    url: normalizeForHash(url),
+    email: normalizeForHash(email),
+    github: normalizeForHash(github),
+    documentation: normalizeForHash(documentation),
+    submissionTime: normalizeForHash(submissionTime),
+    comments: normalizeForHash(comments),
+  });
+}
+
+function applyWebhookUpdate(server, data, csvDataHash, programId) {
+  const { name, url, email, github, documentation, submissionTime, comments } = data;
+  const dataChanged = server.lastCsvData !== csvDataHash;
+  const urlChanged = server.url !== url;
+
+  server.name = name;
+  server.url = url;
+  server.email = email;
+  server.github = github;
+  server.documentation = documentation;
+  server.submissionTime = submissionTime;
+  server.comments = comments;
+  server.updatedAt = new Date();
+  server.lastWebhookAt = new Date();
+  if (programId) server.program = programId;
+
+  if (dataChanged) {
+    server.editCount = (server.editCount || 0) + 1;
+    server.lastCsvData = csvDataHash;
+  }
+  if (urlChanged) {
+    server.statusHistory = [];
+    server.currentStatus = 'unknown';
+    server.currentLatency = null;
+  }
+}
+
 async function syncSingleServer(data, programId) {
   const { name, url, email, github, documentation, submissionTime, comments } = data;
-
-  const csvDataHash = JSON.stringify({ name, url, email, github, documentation, submissionTime, comments });
+  const csvDataHash = makeWebhookHash(data);
 
   let server;
 
@@ -308,46 +351,12 @@ async function syncSingleServer(data, programId) {
     server = await Server.findOne({ email });
 
     if (server) {
-      const dataChanged = server.lastCsvData !== csvDataHash;
-      const urlChanged = server.url !== url;
-
-      server.name = name;
-      server.url = url;
-      server.github = github;
-      server.documentation = documentation;
-      server.submissionTime = submissionTime;
-      server.comments = comments;
-      server.updatedAt = new Date();
-      if (programId) server.program = programId;
-
-      if (dataChanged) {
-        server.editCount = (server.editCount || 0) + 1;
-        server.lastCsvData = csvDataHash;
-      }
-      if (urlChanged) {
-        server.statusHistory = [];
-        server.currentStatus = 'unknown';
-        server.currentLatency = null;
-      }
-
+      applyWebhookUpdate(server, data, csvDataHash, programId);
       await server.save();
     } else {
       const serverByUrl = await Server.findOne({ url });
-
       if (serverByUrl) {
-        const dataChanged = serverByUrl.lastCsvData !== csvDataHash;
-        serverByUrl.name = name;
-        serverByUrl.email = email;
-        serverByUrl.github = github;
-        serverByUrl.documentation = documentation;
-        serverByUrl.submissionTime = submissionTime;
-        serverByUrl.comments = comments;
-        serverByUrl.updatedAt = new Date();
-        if (programId) serverByUrl.program = programId;
-        if (dataChanged) {
-          serverByUrl.editCount = (serverByUrl.editCount || 0) + 1;
-          serverByUrl.lastCsvData = csvDataHash;
-        }
+        applyWebhookUpdate(serverByUrl, data, csvDataHash, programId);
         await serverByUrl.save();
         server = serverByUrl;
       } else {
@@ -361,28 +370,8 @@ async function syncSingleServer(data, programId) {
     }
   } else {
     server = await Server.findOne({ url });
-
     if (server) {
-      const dataChanged = server.lastCsvData !== csvDataHash;
-      const urlChanged = server.url !== url;
-      server.name = name;
-      server.url = url;
-      server.email = email;
-      server.github = github;
-      server.documentation = documentation;
-      server.submissionTime = submissionTime;
-      server.comments = comments;
-      server.updatedAt = new Date();
-      if (programId) server.program = programId;
-      if (dataChanged) {
-        server.editCount = (server.editCount || 0) + 1;
-        server.lastCsvData = csvDataHash;
-      }
-      if (urlChanged) {
-        server.statusHistory = [];
-        server.currentStatus = 'unknown';
-        server.currentLatency = null;
-      }
+      applyWebhookUpdate(server, data, csvDataHash, programId);
       await server.save();
     } else {
       server = new Server({

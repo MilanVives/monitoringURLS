@@ -193,6 +193,16 @@
       }
     }
 
+    function relativeTime(isoString) {
+      const diff = Date.now() - new Date(isoString).getTime();
+      const m = Math.floor(diff / 60000);
+      if (m < 60) return m <= 1 ? 'just now' : m + ' minutes ago';
+      const h = Math.floor(m / 60);
+      if (h < 24) return h === 1 ? '1 hour ago' : h + ' hours ago';
+      const d = Math.floor(h / 24);
+      return d === 1 ? '1 day ago' : d + ' days ago';
+    }
+
     function renderDashboard(data, tileFields) {
       const dashboard = document.getElementById('dashboard');
       dashboard.textContent = '';
@@ -263,6 +273,14 @@
           const m = document.createElement('div');
           m.className = 'meta';
           m.textContent = 'Submitted ' + item.timeSinceSubmission;
+          tile.appendChild(m);
+        }
+
+        if (item.lastWebhookAt) {
+          const m = document.createElement('div');
+          m.className = 'meta';
+          m.style.cssText = 'color:#e67e22;font-size:11px;';
+          m.textContent = 'Edited ' + relativeTime(item.lastWebhookAt);
           tile.appendChild(m);
         }
 
