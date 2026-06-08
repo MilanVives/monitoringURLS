@@ -9,7 +9,8 @@ const { connectDB } = require('./config/database');
 const { processCSV } = require('./services/csvService');
 const { updateAllStatuses, checkUrlStatus } = require('./services/uptimeService');
 const { setupWebSocketServer, broadcastStatusUpdate } = require('./services/wsService');
-const { requireAuth, ADMIN_PASSWORD } = require('./middleware/auth');
+const { requireAuth, ADMIN_PASSWORD, OWNER_EMAIL } = require('./middleware/auth');
+const AdminUser = require('./models/AdminUser');
 const { logAccess } = require('./middleware/accessLogger');
 const dbService = require('./services/databaseService');
 const adminProgramsRouter = require('./routes/adminPrograms');
@@ -135,14 +136,27 @@ app.get('/api/server/:id', async (req, res) => {
 });
 
 // Admin authentication endpoints
-app.post('/api/admin/login', (req, res) => {
+app.post('/api/admin/login', async (req, res) => {
   const { password } = req.body;
-  if (password === ADMIN_PASSWORD) {
-    req.session.isAuthenticated = true;
-    res.json({ success: true });
-  } else {
-    res.status(401).json({ error: 'Invalid password' });
+  if (password !== ADMIN_PASSWORD) {
+    return res.status(401).json({ error: 'Invalid password' });
   }
+
+  const cfEmail = (req.headers['cf-access-authenticated-user-email'] || '').toLowerCase().trim();
+
+  if (cfEmail) {
+    const isOwner = cfEmail === OWNER_EMAIL;
+    if (!isOwner) {
+      const allowed = await AdminUser.findOne({ email: cfEmail });
+      if (!allowed) {
+        return res.status(403).json({ error: 'Access denied: not an authorised admin user' });
+      }
+    }
+    req.session.cfEmail = cfEmail;
+  }
+
+  req.session.isAuthenticated = true;
+  res.json({ success: true });
 });
 
 app.post('/api/admin/logout', (req, res) => {
@@ -436,6 +450,41 @@ app.get('/api/admin/access-logs/unique', requireAuth, async (req, res) => {
         lastIP: item.lastIP
       }))
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin users endpoints
+app.get('/api/admin/admin-users', requireAuth, async (req, res) => {
+  try {
+    const users = await AdminUser.find().sort({ createdAt: -1 });
+    res.json({ owner: OWNER_EMAIL, users });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/admin/admin-users', requireAuth, async (req, res) => {
+  try {
+    const email = (req.body.email || '').toLowerCase().trim();
+    if (!email) return res.status(400).json({ error: 'Email is required' });
+    if (email === OWNER_EMAIL) return res.status(400).json({ error: 'Owner is always an admin' });
+    const addedBy = req.session.cfEmail || 'admin';
+    const user = await AdminUser.create({ email, addedBy });
+    res.json({ success: true, user });
+  } catch (error) {
+    if (error.code === 11000) return res.status(409).json({ error: 'User already exists' });
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/admin/admin-users/:email', requireAuth, async (req, res) => {
+  try {
+    const email = req.params.email.toLowerCase();
+    if (email === OWNER_EMAIL) return res.status(400).json({ error: 'Cannot remove owner' });
+    await AdminUser.deleteOne({ email });
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

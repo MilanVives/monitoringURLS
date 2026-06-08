@@ -350,7 +350,7 @@
 
       const tabs = document.createElement('div');
       tabs.className = 'subtabs';
-      [['servers','Servers'],['tile-fields','Tile Fields'],['csv-mapping','CSV Mapping'],['webhook','Webhook'],['access-logs','Access Logs']].forEach(([key, label], i) => {
+      [['servers','Servers'],['tile-fields','Tile Fields'],['csv-mapping','CSV Mapping'],['webhook','Webhook'],['admins','Admins & Access']].forEach(([key, label], i) => {
         const tab = document.createElement('div');
         tab.className = 'subtab' + (i === 0 ? ' active' : '');
         tab.textContent = label;
@@ -374,7 +374,7 @@
       else if (tab === 'tile-fields') loadTileFieldsTab(id);
       else if (tab === 'csv-mapping') loadCsvMappingTab(id);
       else if (tab === 'webhook')     loadWebhookTab(id);
-      else if (tab === 'access-logs') loadAccessLogsTab();
+      else if (tab === 'admins')      loadAdminsTab();
     }
 
     async function loadServersTab(programId) {
@@ -1046,9 +1046,116 @@
       preview.appendChild(table);
     }
 
+    async function loadAdminsTab() {
+      const content = document.getElementById('subtab-content');
+      content.textContent = 'Loading...';
+
+      const res = await fetch('/api/admin/admin-users', { credentials: 'same-origin' });
+      const data = await res.json();
+      content.textContent = '';
+
+      // Admin users card
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.style.marginBottom = '24px';
+
+      const h3 = document.createElement('h3');
+      h3.textContent = 'Authorised Admin Users';
+      h3.style.marginBottom = '8px';
+      card.appendChild(h3);
+
+      const note = document.createElement('p');
+      note.style.cssText = 'color:#888;font-size:13px;margin-bottom:16px;';
+      note.textContent = 'These users may access the admin panel when authenticating via Cloudflare Access. The owner email is always authorised and cannot be removed.';
+      card.appendChild(note);
+
+      // Owner row
+      const ownerRow = document.createElement('div');
+      ownerRow.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f9f9f9;border-radius:4px;margin-bottom:8px;';
+      ownerRow.innerHTML = `<span style="flex:1;font-weight:bold;">${data.owner}</span><span style="font-size:12px;color:#888;background:#e8f5e9;padding:2px 8px;border-radius:10px;">owner</span>`;
+      card.appendChild(ownerRow);
+
+      const userList = document.createElement('div');
+      userList.id = 'admin-user-list';
+      userList.style.marginBottom = '16px';
+
+      function renderUserList(users) {
+        userList.textContent = '';
+        if (!users.length) {
+          const empty = document.createElement('p');
+          empty.style.cssText = 'color:#aaa;font-size:13px;margin:8px 0;';
+          empty.textContent = 'No additional admin users.';
+          userList.appendChild(empty);
+          return;
+        }
+        users.forEach(u => {
+          const row = document.createElement('div');
+          row.style.cssText = 'display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f9f9f9;border-radius:4px;margin-bottom:6px;';
+          const emailEl = document.createElement('span');
+          emailEl.style.flex = '1';
+          emailEl.textContent = u.email;
+          const addedEl = document.createElement('span');
+          addedEl.style.cssText = 'font-size:11px;color:#aaa;';
+          addedEl.textContent = u.addedBy ? `added by ${u.addedBy}` : '';
+          const delBtn = document.createElement('button');
+          delBtn.textContent = 'Remove';
+          delBtn.style.cssText = 'font-size:12px;padding:3px 10px;background:#e53935;color:#fff;border:none;border-radius:3px;cursor:pointer;';
+          delBtn.onclick = async () => {
+            if (!confirm(`Remove ${u.email}?`)) return;
+            await fetch('/api/admin/admin-users/' + encodeURIComponent(u.email), { method: 'DELETE', credentials: 'same-origin' });
+            loadAdminsTab();
+          };
+          row.appendChild(emailEl);
+          row.appendChild(addedEl);
+          row.appendChild(delBtn);
+          userList.appendChild(row);
+        });
+      }
+      renderUserList(data.users);
+      card.appendChild(userList);
+
+      // Add user form
+      const addRow = document.createElement('div');
+      addRow.style.cssText = 'display:flex;gap:8px;';
+      const emailInput = document.createElement('input');
+      emailInput.type = 'email';
+      emailInput.placeholder = 'user@example.com';
+      emailInput.style.cssText = 'flex:1;padding:8px;border:1px solid #ddd;border-radius:4px;font-size:14px;';
+      const addBtn = document.createElement('button');
+      addBtn.textContent = 'Add User';
+      addBtn.className = 'btn';
+      addBtn.onclick = async () => {
+        const email = emailInput.value.trim();
+        if (!email) return;
+        const r = await fetch('/api/admin/admin-users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ email })
+        });
+        const d = await r.json();
+        if (!r.ok) { alert(d.error); return; }
+        emailInput.value = '';
+        loadAdminsTab();
+      };
+      addRow.appendChild(emailInput);
+      addRow.appendChild(addBtn);
+      card.appendChild(addRow);
+
+      content.appendChild(card);
+
+      // Access logs section below
+      await loadAccessLogsInto(content);
+    }
+
     async function loadAccessLogsTab() {
       const content = document.getElementById('subtab-content');
       content.textContent = 'Loading...';
+      content.textContent = '';
+      await loadAccessLogsInto(content);
+    }
+
+    async function loadAccessLogsInto(container) {
       const [statsRes, logsRes, uniqueRes] = await Promise.all([
         fetch('/api/admin/access-logs/stats', { credentials: 'same-origin' }),
         fetch('/api/admin/access-logs?limit=50', { credentials: 'same-origin' }),
@@ -1058,7 +1165,6 @@
       const logsData = await logsRes.json();
       const uniqueData = await uniqueRes.json();
       const adminVisits = stats.topPaths?.find(p => p._id.includes('/admin'))?.count || 0;
-      content.textContent = '';
 
       const card = document.createElement('div');
       card.className = 'card';
@@ -1187,7 +1293,7 @@
         ['Email', 'Visits', 'Last Access']));
 
       card.appendChild(uvGrid);
-      content.appendChild(card);
+      container.appendChild(card);
     }
 
     function confirmClearAccessLogs() {
@@ -1196,7 +1302,7 @@
 
     async function clearAccessLogs() {
       await fetch('/api/admin/access-logs/clear', { method: 'DELETE', credentials: 'same-origin' });
-      loadAccessLogsTab();
+      loadAdminsTab();
     }
 
     function showAddProgramModal() {
