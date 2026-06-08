@@ -37,6 +37,7 @@ services:
       - MONGODB_URI=mongodb://mongodb:27017/monitoring
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
       - SESSION_SECRET=${SESSION_SECRET:-change-this-secret-in-production}
+      - OWNER_EMAIL=${OWNER_EMAIL:-milan.dima@vives.be}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/urls"]
       interval: 30s

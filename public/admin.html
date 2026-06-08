@@ -236,7 +236,7 @@
         showAdmin();
       } else {
         const err = document.getElementById('login-error');
-        err.textContent = 'Invalid password';
+        err.textContent = data.error || 'Invalid password';
         err.style.display = 'block';
       }
     });
