@@ -143,6 +143,11 @@ app.post('/api/admin/login', async (req, res) => {
   }
 
   const cfEmail = (req.headers['cf-access-authenticated-user-email'] || '').toLowerCase().trim();
+  const isProd = process.env.NODE_ENV === 'production';
+
+  if (isProd && !cfEmail) {
+    return res.status(403).json({ error: 'Cloudflare Access authentication required' });
+  }
 
   if (cfEmail) {
     const isOwner = cfEmail === OWNER_EMAIL;
