@@ -49,12 +49,12 @@ router.post('/:slug', async (req, res) => {
       { name, email, url, github, documentation, submissionTime, comments },
       program._id
     );
-    if (req.app.locals.addToMonitoring) {
+    if (server && req.app.locals.addToMonitoring) {
       req.app.locals.addToMonitoring(server);
     }
     res.json({ ok: true });
   } catch (err) {
-    console.error('Webhook error:', err.message);
+    console.error('Webhook error:', err.stack || err.message);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

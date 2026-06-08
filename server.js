@@ -549,7 +549,12 @@ const server = app.listen(PORT, () => {
 const wss = setupWebSocketServer(server);
 app.locals.wss = wss;
 app.locals.addToMonitoring = (server) => {
-  const existingIndex = urlData.findIndex(s => s._id.toString() === server._id.toString());
+  if (!server || !server._id) {
+    console.warn('[addToMonitoring] called with invalid server:', server);
+    return;
+  }
+  const id = server._id.toString();
+  const existingIndex = urlData.findIndex(s => s && s._id && s._id.toString() === id);
   if (existingIndex === -1) {
     urlData.push(server);
   } else {
