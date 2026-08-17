@@ -553,11 +553,20 @@
     }
 
     function confirmClearDatabase() {
-      if (confirm('Delete ALL servers? Cannot be undone.') && confirm('Absolutely sure?')) clearDatabase();
+      const scopeMsg = currentProgramId
+        ? 'Delete all servers for this program? Cannot be undone.'
+        : 'Delete ALL servers across all programs? Cannot be undone.';
+      if (confirm(scopeMsg) && confirm('Absolutely sure?')) clearDatabase();
     }
 
     async function clearDatabase() {
-      await fetch('/api/admin/clear-database', { method: 'POST', credentials: 'same-origin' });
+      const body = currentProgramId ? JSON.stringify({ programId: currentProgramId }) : '{}';
+      await fetch('/api/admin/clear-database', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body
+      });
       await reloadPrograms();
       loadServersTab(currentProgramId);
     }

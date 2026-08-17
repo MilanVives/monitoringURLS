@@ -66,7 +66,7 @@ router.put('/:id', requireAuth, async (req, res) => {
 // DELETE /api/admin/programs/:id
 router.delete('/:id', requireAuth, async (req, res) => {
   try {
-    await Server.updateMany({ program: req.params.id }, { $set: { program: null } });
+    await Server.deleteMany({ program: req.params.id });
     await Program.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (error) {

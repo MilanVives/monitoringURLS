@@ -3,14 +3,14 @@ const { getTimeDifference } = require('../utils/dateUtils');
 
 async function syncServersFromCSV(csvData, programId) {
   const syncedServers = [];
-  
+
   // Filter out grayed-out entries (only keep latest per email)
   const latestEntries = csvData.filter(data => !data.grayedOut);
-  
+
   // Process each latest entry
   for (const data of latestEntries) {
     const { name, url, email, github, documentation, submissionTime, comments } = data;
-    
+
     // Create a hash of the data to detect changes
     const csvDataHash = JSON.stringify({
       name,
@@ -21,21 +21,24 @@ async function syncServersFromCSV(csvData, programId) {
       submissionTime,
       comments
     });
-    
+
     let server;
-    
-    // First, try to find existing server by email
+
+    // Scope all lookups to the same program — a student can exist in multiple programs
+    const programFilter = programId ? { program: programId } : {};
+
+    // First, try to find existing server by email within this program
     if (email) {
-      server = await Server.findOne({ email });
-      
+      server = await Server.findOne({ email, ...programFilter });
+
       if (server) {
         // Check if data has changed
         const dataChanged = server.lastCsvData !== csvDataHash;
-        
+
         // Update existing server for this email
         // If URL changed, update it
         const urlChanged = server.url !== url;
-        
+
         server.name = name;
         server.url = url;
         server.github = github;
@@ -44,14 +47,14 @@ async function syncServersFromCSV(csvData, programId) {
         server.comments = comments;
         server.updatedAt = new Date();
         if (programId) server.program = programId;
-        
+
         // Increment edit count only if data actually changed
         if (dataChanged) {
           server.editCount = (server.editCount || 0) + 1;
           server.lastCsvData = csvDataHash;
           console.log(`Data changed for ${email}: Edit count now ${server.editCount}`);
         }
-        
+
         if (urlChanged) {
           // Reset status history if URL changed
           console.log(`URL changed for ${email}: ${server.url} -> ${url}`);
@@ -59,16 +62,16 @@ async function syncServersFromCSV(csvData, programId) {
           server.currentStatus = 'unknown';
           server.currentLatency = null;
         }
-        
+
         await server.save();
       } else {
-        // No server exists for this email, check if URL exists without email
-        const serverByUrl = await Server.findOne({ url });
-        
+        // No server exists for this email in this program, check if URL exists in this program
+        const serverByUrl = await Server.findOne({ url, ...programFilter });
+
         if (serverByUrl) {
           // Update existing server found by URL
           const dataChanged = serverByUrl.lastCsvData !== csvDataHash;
-          
+
           serverByUrl.name = name;
           serverByUrl.email = email;
           serverByUrl.github = github;
@@ -77,12 +80,12 @@ async function syncServersFromCSV(csvData, programId) {
           serverByUrl.comments = comments;
           serverByUrl.updatedAt = new Date();
           if (programId) serverByUrl.program = programId;
-          
+
           if (dataChanged) {
             serverByUrl.editCount = (serverByUrl.editCount || 0) + 1;
             serverByUrl.lastCsvData = csvDataHash;
           }
-          
+
           await serverByUrl.save();
           server = serverByUrl;
         } else {
@@ -104,12 +107,12 @@ async function syncServersFromCSV(csvData, programId) {
         }
       }
     } else {
-      // No email provided, just check by URL
-      server = await Server.findOne({ url });
-      
+      // No email provided, just check by URL within this program
+      server = await Server.findOne({ url, ...programFilter });
+
       if (server) {
         const dataChanged = server.lastCsvData !== csvDataHash;
-        
+
         server.name = name;
         server.email = email;
         server.github = github;
@@ -118,12 +121,12 @@ async function syncServersFromCSV(csvData, programId) {
         server.comments = comments;
         server.updatedAt = new Date();
         if (programId) server.program = programId;
-        
+
         if (dataChanged) {
           server.editCount = (server.editCount || 0) + 1;
           server.lastCsvData = csvDataHash;
         }
-        
+
         await server.save();
       } else {
         server = new Server({
@@ -218,6 +221,10 @@ async function updateServer(serverId, updates) {
 
 async function clearAllServers() {
   return await Server.deleteMany({});
+}
+
+async function clearServersByProgram(programId) {
+  return await Server.deleteMany({ program: programId });
 }
 
 async function getServerStatistics(serverId) {
@@ -347,14 +354,17 @@ async function syncSingleServer(data, programId) {
 
   let server;
 
+  // Scope lookups to this program so the same student can exist in multiple programs
+  const programFilter = programId ? { program: programId } : {};
+
   if (email) {
-    server = await Server.findOne({ email });
+    server = await Server.findOne({ email, ...programFilter });
 
     if (server) {
       applyWebhookUpdate(server, data, csvDataHash, programId);
       await server.save();
     } else {
-      const serverByUrl = await Server.findOne({ url });
+      const serverByUrl = await Server.findOne({ url, ...programFilter });
       if (serverByUrl) {
         applyWebhookUpdate(serverByUrl, data, csvDataHash, programId);
         await serverByUrl.save();
@@ -369,7 +379,7 @@ async function syncSingleServer(data, programId) {
       }
     }
   } else {
-    server = await Server.findOne({ url });
+    server = await Server.findOne({ url, ...programFilter });
     if (server) {
       applyWebhookUpdate(server, data, csvDataHash, programId);
       await server.save();
@@ -400,5 +410,6 @@ module.exports = {
   deleteServer,
   updateServer,
   clearAllServers,
+  clearServersByProgram,
   getServerStatistics
 };

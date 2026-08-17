@@ -304,9 +304,16 @@ app.put('/api/admin/servers/:id', requireAuth, async (req, res) => {
 
 app.post('/api/admin/clear-database', requireAuth, async (req, res) => {
   try {
-    await dbService.clearAllServers();
-    urlData = [];
-    res.json({ success: true, message: 'Database cleared' });
+    const { programId } = req.body || {};
+    if (programId) {
+      await dbService.clearServersByProgram(programId);
+      urlData = urlData.filter(s => s && s.program && s.program.toString() !== programId);
+      res.json({ success: true, message: 'Program servers cleared' });
+    } else {
+      await dbService.clearAllServers();
+      urlData = [];
+      res.json({ success: true, message: 'Database cleared' });
+    }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
